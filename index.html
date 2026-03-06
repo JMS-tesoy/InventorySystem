@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Office Supplies Inventory System</title>
+
+  <!-- =====================================================
+       Link to external stylesheet (styles.css)
+       ===================================================== -->
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════
+     LOGIN OVERLAY — shown before user is authenticated
+     ══════════════════════════════════════════════════ -->
+<div id="login-overlay">
+  <div id="login-card">
+    <div class="login-logo">📦</div>
+    <div class="login-title">Supply Monitor</div>
+    <div class="login-subtitle">Office Inventory System</div>
+    <hr style="margin:16px 0; border-color:#dce6f0;">
+
+    <div class="form-group" style="margin-bottom:12px;">
+      <label style="font-size:12px;font-weight:600;color:#546e7a;">USERNAME</label>
+      <input type="text" id="login-username" placeholder="Enter username" onkeydown="loginKeydown(event)" autocomplete="username">
+    </div>
+    <div class="form-group" style="margin-bottom:6px;">
+      <label style="font-size:12px;font-weight:600;color:#546e7a;">PASSWORD</label>
+      <div style="position:relative;">
+        <input type="password" id="login-password" placeholder="Enter password" onkeydown="loginKeydown(event)" autocomplete="current-password" style="padding-right:42px;">
+        <button id="toggle-pwd-btn" onclick="toggleLoginPassword()" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;padding:0;">👁️</button>
+      </div>
+    </div>
+
+    <div id="login-error" style="font-size:12px;color:#c62828;min-height:18px;margin-bottom:8px;"></div>
+
+    <button class="btn btn-primary" onclick="doLogin()" style="width:100%;padding:11px;">
+      🔐 Login
+    </button>
+
+    <div class="login-accounts-hint">
+      <strong>Default Accounts:</strong><br>
+      Admin: <code>admin</code> / <code>Admin@1234</code><br>
+      User: <code>user</code> / <code>User@1234</code>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     SIDEBAR NAVIGATION
+     ══════════════════════════════════════════════════ -->
+<div id="sidebar">
+  <div class="brand">
+    📦 Supply Monitor
+    <span>Office Inventory System</span>
+  </div>
+  <nav>
+    <!-- Each link calls showPage() in app.js -->
+    <a class="active" onclick="showPage('dashboard')">
+      <span class="icon">📊</span> Dashboard
+    </a>
+    <a onclick="showPage('request')">
+      <span class="icon">📤</span> Less / Request
+    </a>
+    <a onclick="showPage('addstocks')">
+      <span class="icon">📥</span> Add Stocks
+    </a>
+    <a onclick="showPage('settings')">
+      <span class="icon">⚙️</span> Settings
+    </a>
+  </nav>
+</div>
+
+<!-- Mobile overlay — closes sidebar when tapped outside -->
+<div id="overlay" onclick="closeSidebar()"></div>
+
+<!-- Mobile hamburger button — toggles sidebar -->
+<button id="hamburger" onclick="toggleSidebar()">☰</button>
+
+<!-- ══════════════════════════════════════════════════
+     MAIN CONTENT AREA
+     ══════════════════════════════════════════════════ -->
+<div id="main">
+
+  <!-- Top bar — title updates dynamically via showPage() -->
+  <div id="topbar">
+    <span id="topbar-title">📊 Inventory Dashboard</span>
+    <div id="topbar-user"></div>
+  </div>
+
+  <div id="content">
+
+    <!-- ─────────────────────────────────────────────────
+         PAGE 1: INVENTORY DASHBOARD
+         ───────────────────────────────────────────────── -->
+    <div class="page active" id="page-dashboard">
+
+      <!-- Stat summary boxes (rendered by renderDashboard in app.js) -->
+      <div class="stats-row" id="stat-boxes"></div>
+
+      <!-- Search & Filter card -->
+      <div class="card no-print">
+        <h3>🔍 Search & Filter</h3>
+        <div class="filters-bar">
+          <div class="form-group">
+            <label>Search Item</label>
+            <input type="text" id="dash-search" placeholder="Type item name..." oninput="renderDashboard()">
+          </div>
+          <div class="form-group">
+            <label>Department</label>
+            <select id="dash-dept" onchange="renderDashboard()">
+              <option value="">All Departments</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Stock Status</label>
+            <select id="dash-status" onchange="renderDashboard()">
+              <option value="">All</option>
+              <option value="ok">OK (≥ 10)</option>
+              <option value="low">Low (1–9)</option>
+              <option value="out">Out of Stock (0)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Date From</label>
+            <input type="date" id="dash-date-from" onchange="renderDashboard()">
+          </div>
+          <div class="form-group">
+            <label>Date To</label>
+            <input type="date" id="dash-date-to" onchange="renderDashboard()">
+          </div>
+          <button class="btn btn-outline" onclick="clearDashFilters()">Clear</button>
+          <button class="btn btn-print" onclick="printDashboard()">🖨️ Print</button>
+          <button class="btn btn-excel" onclick="exportInventory()">📊 Export Excel</button>
+        </div>
+      </div>
+
+      <!-- Printable inventory table -->
+      <div id="print-area">
+        <!-- Print header injected by injectPrintHeader() in app.js -->
+        <div id="print-header-dash" style="display:none; text-align:center; margin-bottom:16px;"></div>
+
+        <div class="card">
+          <h3>📦 Inventory List</h3>
+          <div class="table-wrap">
+            <table id="dash-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Item Name</th>
+                  <th>Unit</th>
+                  <th>Category</th>
+                  <th>Balance</th>
+                  <th>Status</th>
+                  <th>Last Updated</th>
+                </tr>
+              </thead>
+              <tbody id="dash-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Signatories — hidden on screen, visible when printing -->
+        <div id="print-sigs-dash" class="signatories" style="display:none;"></div>
+      </div>
+
+    </div><!-- END PAGE 1: Dashboard -->
+
+
+    <!-- ─────────────────────────────────────────────────
+         PAGE 2: LESS / REQUEST (Items Out)
+         ───────────────────────────────────────────────── -->
+    <div class="page" id="page-request">
+
+      <!-- New Request Form — Admin only -->
+      <div class="card admin-only">
+        <h3>📤 New Request / Issue</h3>
+        <div id="req-alert"></div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Date *</label>
+            <input type="date" id="req-date">
+          </div>
+          <div class="form-group">
+            <label>Employee *</label>
+            <!-- onchange triggers autoFillDeptReq() to fill department -->
+            <select id="req-emp" onchange="autoFillDeptReq()">
+              <option value="">-- Select Employee --</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Department (auto)</label>
+            <input type="text" id="req-dept" readonly placeholder="Auto-filled" style="background:#f5f5f5;">
+          </div>
+        </div>
+
+        <!-- Dynamic item rows added by addRequestItem() in app.js -->
+        <h3 style="margin-bottom:10px;">Items Requested</h3>
+        <div id="req-items-container"></div>
+        <button class="btn btn-outline btn-sm" onclick="addRequestItem()" style="margin-bottom:12px;">
+          + Add Item
+        </button>
+
+        <div class="form-group" style="max-width:400px;">
+          <label>Remarks (optional)</label>
+          <textarea id="req-remarks" placeholder="Reason, purpose, etc."></textarea>
+        </div>
+
+        <button class="btn btn-primary" onclick="submitRequest()">✅ Submit Request</button>
+      </div>
+
+      <!-- Recent Requests History -->
+      <div class="card">
+        <h3>📋 Recent Requests</h3>
+        <div class="filters-bar no-print">
+          <div class="form-group">
+            <label>Filter Employee</label>
+            <select id="req-hist-emp" onchange="renderRequestHistory()">
+              <option value="">All</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Date From</label>
+            <input type="date" id="req-hist-from" onchange="renderRequestHistory()">
+          </div>
+          <div class="form-group">
+            <label>Date To</label>
+            <input type="date" id="req-hist-to" onchange="renderRequestHistory()">
+          </div>
+          <button class="btn btn-print" onclick="printSection('req-print-area')">🖨️ Print</button>
+          <button class="btn btn-excel" onclick="exportRequests()">📊 Export Excel</button>
+        </div>
+
+        <div id="req-print-area">
+          <div id="print-header-req" style="display:none; text-align:center; margin-bottom:16px;"></div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th><th>Employee</th><th>Department</th>
+                  <th>Item</th><th>Qty</th><th>Remarks</th>
+                </tr>
+              </thead>
+              <tbody id="req-hist-tbody"></tbody>
+            </table>
+          </div>
+          <div id="print-sigs-req" class="signatories" style="display:none;"></div>
+        </div>
+      </div>
+
+    </div><!-- END PAGE 2: Request -->
+
+
+    <!-- ─────────────────────────────────────────────────
+         PAGE 3: ADD STOCKS (Items In)
+         ───────────────────────────────────────────────── -->
+    <div class="page" id="page-addstocks">
+
+      <!-- Add Stock Form — Admin only -->
+      <div class="card admin-only">
+        <h3>📥 Add New Stock</h3>
+        <div id="stock-alert"></div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Date *</label>
+            <input type="date" id="stock-date">
+          </div>
+          <div class="form-group">
+            <label>Item *</label>
+            <!-- onchange triggers showStockBalance() to display current qty -->
+            <select id="stock-item" onchange="showStockBalance()">
+              <option value="">-- Select Item --</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Current Balance</label>
+            <input type="text" id="stock-current" readonly style="background:#f5f5f5;">
+          </div>
+          <div class="form-group">
+            <label>Qty to Add *</label>
+            <input type="number" id="stock-qty" min="1" placeholder="0">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Received By (Employee)</label>
+            <select id="stock-emp" onchange="autoFillDeptStock()">
+              <option value="">-- Optional --</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Department (auto)</label>
+            <input type="text" id="stock-dept" readonly placeholder="Auto-filled" style="background:#f5f5f5;">
+          </div>
+          <div class="form-group">
+            <label>Remarks</label>
+            <input type="text" id="stock-remarks" placeholder="Source, PO#, etc.">
+          </div>
+        </div>
+
+        <button class="btn btn-success" onclick="submitStock()">✅ Add to Inventory</button>
+      </div>
+
+      <!-- Stock-In History -->
+      <div class="card">
+        <h3>📋 Stock-In History</h3>
+        <div class="filters-bar no-print">
+          <div class="form-group">
+            <label>Filter Item</label>
+            <select id="stock-hist-item" onchange="renderStockHistory()">
+              <option value="">All Items</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Date From</label>
+            <input type="date" id="stock-hist-from" onchange="renderStockHistory()">
+          </div>
+          <div class="form-group">
+            <label>Date To</label>
+            <input type="date" id="stock-hist-to" onchange="renderStockHistory()">
+          </div>
+          <button class="btn btn-print" onclick="printSection('stock-print-area')">🖨️ Print</button>
+          <button class="btn btn-excel" onclick="exportStockIn()">📊 Export Excel</button>
+        </div>
+
+        <div id="stock-print-area">
+          <div id="print-header-stock" style="display:none; text-align:center; margin-bottom:16px;"></div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th><th>Item</th><th>Qty Added</th>
+                  <th>Received By</th><th>Department</th><th>Remarks</th>
+                </tr>
+              </thead>
+              <tbody id="stock-hist-tbody"></tbody>
+            </table>
+          </div>
+          <div id="print-sigs-stock" class="signatories" style="display:none;"></div>
+        </div>
+      </div>
+
+    </div><!-- END PAGE 3: Add Stocks -->
+
+
+    <!-- ─────────────────────────────────────────────────
+         PAGE 4: SETTINGS
+         ───────────────────────────────────────────────── -->
+    <div class="page" id="page-settings">
+
+      <!-- ── a. Departments — Admin only ── -->
+      <div class="card admin-only">
+        <h3>🏢 Departments</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Department Name</label>
+            <input type="text" id="dept-name" placeholder="e.g. Finance">
+          </div>
+          <input type="hidden" id="dept-edit-id">
+          <button class="btn btn-primary" onclick="saveDept()">Save Department</button>
+          <button class="btn btn-outline btn-sm" onclick="cancelDeptEdit()">Cancel</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Department Name</th><th>Actions</th></tr></thead>
+            <tbody id="dept-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── b. Employees — Admin only ── -->
+      <div class="card admin-only">
+        <h3>👤 Employees</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Full Name</label>
+            <input type="text" id="emp-name" placeholder="e.g. Juan dela Cruz">
+          </div>
+          <div class="form-group">
+            <label>Department</label>
+            <select id="emp-dept"><option value="">-- Select --</option></select>
+          </div>
+          <input type="hidden" id="emp-edit-id">
+          <button class="btn btn-primary" onclick="saveEmp()">Save Employee</button>
+          <button class="btn btn-outline btn-sm" onclick="cancelEmpEdit()">Cancel</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Name</th><th>Department</th><th>Actions</th></tr></thead>
+            <tbody id="emp-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── c. Items / Supplies — Admin only ── -->
+      <div class="card admin-only">
+        <h3>📦 Items / Supplies</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Item Name *</label>
+            <input type="text" id="item-name" placeholder="e.g. Bond Paper">
+          </div>
+          <div class="form-group">
+            <label>Unit</label>
+            <input type="text" id="item-unit" placeholder="pcs, box, ream...">
+          </div>
+          <div class="form-group">
+            <label>Category</label>
+            <input type="text" id="item-cat" placeholder="e.g. Paper">
+          </div>
+          <div class="form-group">
+            <label>Initial Balance</label>
+            <input type="number" id="item-balance" min="0" placeholder="0">
+          </div>
+          <input type="hidden" id="item-edit-id">
+          <button class="btn btn-primary" onclick="saveItem()">Save Item</button>
+          <button class="btn btn-outline btn-sm" onclick="cancelItemEdit()">Cancel</button>
+        </div>
+
+        <!-- Manual balance adjustment panel -->
+        <div id="item-adjust-box" style="display:none;" class="alert alert-info">
+          <strong>Adjust Balance</strong> for: <span id="item-adjust-name"></span><br>
+          <div class="form-row" style="margin-top:8px;">
+            <div class="form-group">
+              <label>New Balance</label>
+              <input type="number" id="item-adj-balance" min="0">
+            </div>
+            <div class="form-group">
+              <label>Reason</label>
+              <input type="text" id="item-adj-reason" placeholder="e.g. Physical count adjustment">
+            </div>
+            <button class="btn" onclick="applyAdjust()" style="background:var(--warning);color:#fff;">Apply</button>
+            <button class="btn btn-outline btn-sm" onclick="cancelAdjust()">Cancel</button>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th><th>Item Name</th><th>Unit</th>
+                <th>Category</th><th>Balance</th><th>Updated</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="item-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── d. Report Header ── -->
+      <div class="card">
+        <h3>🖨️ Report Header (used in printed reports)</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Office / Company Name</label>
+            <input type="text" id="hdr-company" placeholder="e.g. Anytown City Hall">
+          </div>
+          <div class="form-group">
+            <label>Address</label>
+            <input type="text" id="hdr-address" placeholder="e.g. 123 Main St.">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Report Sub-title</label>
+            <input type="text" id="hdr-subtitle" placeholder="e.g. Office Supplies Inventory Report">
+          </div>
+          <div class="form-group">
+            <label>Logo Text / Tag (optional)</label>
+            <input type="text" id="hdr-logo" placeholder="e.g. [Republic of the Philippines]">
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="saveHeader()">💾 Save Header</button>
+      </div>
+
+      <!-- ── e. Signatories ── -->
+      <div class="card">
+        <h3>✍️ Signatories (for printed reports)</h3>
+
+        <strong>1. Prepared By</strong>
+        <div class="form-row" style="margin-top:8px;">
+          <div class="form-group">
+            <label>Name</label>
+            <input type="text" id="sig1-name" placeholder="Full Name">
+          </div>
+          <div class="form-group">
+            <label>Position</label>
+            <input type="text" id="sig1-pos" placeholder="Position / Title">
+          </div>
+        </div>
+        <hr>
+
+        <strong>2. Checked By</strong>
+        <div class="form-row" style="margin-top:8px;">
+          <div class="form-group">
+            <label>Name</label>
+            <input type="text" id="sig2-name" placeholder="Full Name">
+          </div>
+          <div class="form-group">
+            <label>Position</label>
+            <input type="text" id="sig2-pos" placeholder="Position / Title">
+          </div>
+        </div>
+        <hr>
+
+        <strong>3. Approved By</strong>
+        <div class="form-row" style="margin-top:8px;">
+          <div class="form-group">
+            <label>Name</label>
+            <input type="text" id="sig3-name" placeholder="Full Name">
+          </div>
+          <div class="form-group">
+            <label>Position</label>
+            <input type="text" id="sig3-pos" placeholder="Position / Title">
+          </div>
+        </div>
+
+        <button class="btn btn-primary" onclick="saveSignatories()" style="margin-top:12px;">
+          💾 Save Signatories
+        </button>
+      </div>
+
+      <!-- ── f. Export All Data — Admin only ── -->
+      <div class="card admin-only" style="border-top: 4px solid #1d6f42;">
+        <h3>📊 Export All Data to Excel</h3>
+        <p style="font-size:13px; color:#546e7a; margin-bottom:16px;">
+          Download a complete Excel workbook with all your data in separate sheets.
+          Great for backups, reports, or sharing with others.
+        </p>
+
+        <!-- Individual exports -->
+        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:20px;">
+          <div class="export-card" onclick="showPage('dashboard'); setTimeout(exportInventory,200)">
+            <div class="export-icon">📦</div>
+            <div class="export-label">Inventory List</div>
+            <div class="export-sub">Current stock & balances</div>
+          </div>
+          <div class="export-card" onclick="showPage('request'); setTimeout(exportRequests,200)">
+            <div class="export-icon">📤</div>
+            <div class="export-label">Request History</div>
+            <div class="export-sub">All items issued out</div>
+          </div>
+          <div class="export-card" onclick="showPage('addstocks'); setTimeout(exportStockIn,200)">
+            <div class="export-icon">📥</div>
+            <div class="export-label">Stock-In History</div>
+            <div class="export-sub">All stock received</div>
+          </div>
+        </div>
+
+        <hr style="margin-bottom:16px;">
+
+        <!-- Full export button -->
+        <div style="text-align:center; padding: 20px; background:#f0f7f0; border-radius:8px; border: 2px dashed #1d6f42;">
+          <div style="font-size:32px; margin-bottom:8px;">📗</div>
+          <div style="font-size:15px; font-weight:700; color:#1d6f42; margin-bottom:4px;">Export Everything</div>
+          <div style="font-size:12px; color:#546e7a; margin-bottom:16px;">
+            One Excel file · 4 sheets: Inventory, Requests, Stock-In, Employees
+          </div>
+          <button class="btn btn-excel-big" onclick="exportAllData()">
+            ⬇️ Download Full Workbook (.xlsx)
+          </button>
+        </div>
+      </div>
+
+      <!-- ── g. Change Password (all users) ── -->
+      <div class="card">
+        <h3>🔑 Change My Password</h3>
+        <div id="pwd-msg" style="margin-bottom:10px;"></div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Current Password</label>
+            <input type="password" id="pwd-current" placeholder="Your current password">
+          </div>
+          <div class="form-group">
+            <label>New Password</label>
+            <input type="password" id="pwd-new" placeholder="Min. 6 characters">
+          </div>
+          <div class="form-group">
+            <label>Confirm New Password</label>
+            <input type="password" id="pwd-confirm" placeholder="Repeat new password">
+          </div>
+          <button class="btn btn-primary" onclick="changeOwnPassword()">💾 Update Password</button>
+        </div>
+      </div>
+
+      <!-- ── h. Admin: Reset Any Account Password (admin only) ── -->
+      <div class="card admin-only" style="border-top:4px solid #c62828;">
+        <h3>🔐 Admin: Reset Account Password</h3>
+        <p style="font-size:12px;color:#546e7a;margin-bottom:12px;">
+          As Admin you can reset the password of any account.
+        </p>
+        <div id="admin-reset-msg" style="margin-bottom:10px;"></div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Select Account</label>
+            <select id="admin-reset-user">
+              <option value="">-- Select Account --</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>New Password</label>
+            <input type="password" id="admin-reset-pwd" placeholder="Min. 6 characters">
+          </div>
+          <button class="btn btn-danger" onclick="adminResetPassword()">🔄 Reset Password</button>
+        </div>
+      </div>
+
+    </div><!-- END PAGE 4: Settings -->
+
+  </div><!-- end #content -->
+</div><!-- end #main -->
+
+
+<!-- ══════════════════════════════════════════════════
+     FOOTER
+     ══════════════════════════════════════════════════ -->
+<footer style="
+  position: fixed;
+  bottom: 0; left: 0;
+  width: 100%;
+  text-align: center;
+  padding: 10px 0;
+  background: #0d1847;
+  color: #90c515;
+  font-size: 14px;
+  border-top: 1px solid #d0d0d0;
+  z-index: 999;
+">
+  Powered by <strong style="color:#bbd493;">JeRaMix</strong> • © 2026
+</footer>
+
+
+<!-- ══════════════════════════════════════════════════
+     SCRIPTS
+     Load db.js first (data helpers + seed data),
+     then app.js (all UI logic).
+     ══════════════════════════════════════════════════ -->
+<!-- SheetJS — Excel export library (loaded from CDN) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="db.js"></script>
+<script src="auth.js"></script>
+<script src="app.js"></script>
+<script src="export.js"></script>
+
+</body>
+</html>

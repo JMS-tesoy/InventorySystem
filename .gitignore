@@ -1,0 +1,6 @@
+.vscode/
+.zencoder/
+.zenflow/
+__codex_write_test.txt
+Thumbs.db
+.DS_Store
