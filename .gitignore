@@ -4,3 +4,5 @@
 __codex_write_test.txt
 Thumbs.db
 .DS_Store
+node_modules/
+data.sqlite3

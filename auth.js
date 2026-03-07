@@ -41,7 +41,14 @@ function initAccounts() {
       displayName: 'Staff User'
     }
   ];
-  localStorage.setItem('accounts', JSON.stringify(accounts));
+  saveAuthKey('accounts', accounts);
+}
+
+function saveAuthKey(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+  if (typeof window.syncStorageKey === 'function') {
+    window.syncStorageKey(key, value);
+  }
 }
 
 /* ─────────────────────────────────────────────────────
@@ -58,17 +65,20 @@ function getSession() {
 // Save session after successful login
 function setSession(user) {
   // Store only safe fields — never store password in session
-  localStorage.setItem('currentUser', JSON.stringify({
+  saveAuthKey('currentUser', {
     id:          user.id,
     username:    user.username,
     role:        user.role,
     displayName: user.displayName
-  }));
+  });
 }
 
 // Clear session on logout
 function clearSession() {
   localStorage.removeItem('currentUser');
+  if (typeof window.syncStorageKey === 'function') {
+    window.syncStorageKey('currentUser', null);
+  }
 }
 
 // Shortcut: is the current user an admin?
@@ -134,6 +144,7 @@ function doLogin() {
   hideLoginScreen();
   applyRoleUI(match.role);
   updateTopbarUser(match);
+  if (typeof refreshThemeForCurrentUser === 'function') refreshThemeForCurrentUser();
 
   // Clear login fields
   document.getElementById('login-username').value = '';
@@ -152,6 +163,7 @@ function loginKeydown(e) {
 function doLogout() {
   if (!confirm('Log out of the system?')) return;
   clearSession();
+  if (typeof refreshThemeForCurrentUser === 'function') refreshThemeForCurrentUser();
   // Reset body role class
   document.body.classList.remove('role-admin', 'role-user');
   // Go back to dashboard view so login screen looks clean
@@ -202,8 +214,14 @@ function updateTopbarUser(session) {
   badge.innerHTML = `
     ${roleLabel}
     <span class="topbar-name">${session.displayName}</span>
+    <button id="theme-toggle-btn" class="theme-toggle no-print" onclick="toggleTheme()" aria-label="Switch theme" title="Switch theme">Dark Mode</button>
     <button class="btn btn-sm btn-logout" onclick="doLogout()">🚪 Logout</button>
   `;
+
+  if (typeof applyTheme === 'function') {
+    const mode = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+    applyTheme(mode);
+  }
 }
 
 
@@ -264,7 +282,7 @@ function changeOwnPassword() {
 
   // Save new password
   accounts[idx].password = newPwd;
-  localStorage.setItem('accounts', JSON.stringify(accounts));
+  saveAuthKey('accounts', accounts);
 
   msgEl.textContent = '✅ Password changed successfully!';
   msgEl.className = 'alert alert-success';
@@ -304,7 +322,7 @@ function adminResetPassword() {
   }
 
   accounts[idx].password = newPwd;
-  localStorage.setItem('accounts', JSON.stringify(accounts));
+  saveAuthKey('accounts', accounts);
 
   msgEl.textContent = `✅ Password for "${targetUsername}" reset successfully!`;
   msgEl.className = 'alert alert-success';
@@ -334,3 +352,4 @@ function toggleLoginPassword() {
     btn.textContent = '👁️';
   }
 }
+

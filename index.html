@@ -5,6 +5,35 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Office Supplies Inventory System</title>
 
+  <script>
+    (function () {
+      try {
+        const session = JSON.parse(localStorage.getItem('currentUser') || 'null');
+        const username = session && session.username ? session.username : '__guest__';
+        const settings = JSON.parse(localStorage.getItem('settings') || '{}');
+        const map = settings && settings.theme_by_user && typeof settings.theme_by_user === 'object'
+          ? settings.theme_by_user
+          : {};
+
+        const saved = map[username];
+        const legacy = localStorage.getItem('theme');
+        const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+        const theme = (saved === 'dark' || saved === 'light')
+          ? saved
+          : (legacy === 'dark' || legacy === 'light')
+          ? legacy
+          : (systemDark ? 'dark' : 'light');
+
+        document.documentElement.setAttribute('data-theme', theme);
+        document.documentElement.style.colorScheme = theme;
+      } catch (_) {
+        document.documentElement.setAttribute('data-theme', 'light');
+        document.documentElement.style.colorScheme = 'light';
+      }
+    })();
+  </script>
+
   <!-- =====================================================
        Link to external stylesheet (styles.css)
        ===================================================== -->
@@ -20,14 +49,14 @@
     <div class="login-logo">📦</div>
     <div class="login-title">Supply Monitor</div>
     <div class="login-subtitle">Office Inventory System</div>
-    <hr style="margin:16px 0; border-color:#dce6f0;">
+    <hr class="login-divider" style="margin:16px 0; border-color:#dce6f0;">
 
     <div class="form-group" style="margin-bottom:12px;">
-      <label style="font-size:12px;font-weight:600;color:#546e7a;">USERNAME</label>
+      <label class="login-field-label" style="font-size:12px;font-weight:600;color:#546e7a;">USERNAME</label>
       <input type="text" id="login-username" placeholder="Enter username" onkeydown="loginKeydown(event)" autocomplete="username">
     </div>
     <div class="form-group" style="margin-bottom:6px;">
-      <label style="font-size:12px;font-weight:600;color:#546e7a;">PASSWORD</label>
+      <label class="login-field-label" style="font-size:12px;font-weight:600;color:#546e7a;">PASSWORD</label>
       <div style="position:relative;">
         <input type="password" id="login-password" placeholder="Enter password" onkeydown="loginKeydown(event)" autocomplete="current-password" style="padding-right:42px;">
         <button id="toggle-pwd-btn" onclick="toggleLoginPassword()" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;padding:0;">👁️</button>
@@ -49,8 +78,9 @@
 </div>
 
 <!-- ══════════════════════════════════════════════════
-     SIDEBAR NAVIGATION
-     ══════════════════════════════════════════════════ -->
+  SIDEBAR NAVIGATION
+  ══════════════════════════════════════════════════ -->
+
 <div id="sidebar">
   <div class="brand">
     📦 Supply Monitor
@@ -193,7 +223,7 @@
           </div>
           <div class="form-group">
             <label>Department (auto)</label>
-            <input type="text" id="req-dept" readonly placeholder="Auto-filled" style="background:#f5f5f5;">
+            <input type="text" id="req-dept" readonly class="readonly-field" placeholder="Auto-filled" style="background:#f5f5f5;">
           </div>
         </div>
 
@@ -278,7 +308,7 @@
           </div>
           <div class="form-group">
             <label>Current Balance</label>
-            <input type="text" id="stock-current" readonly style="background:#f5f5f5;">
+            <input type="text" id="stock-current" readonly class="readonly-field" style="background:#f5f5f5;">
           </div>
           <div class="form-group">
             <label>Qty to Add *</label>
@@ -295,7 +325,7 @@
           </div>
           <div class="form-group">
             <label>Department (auto)</label>
-            <input type="text" id="stock-dept" readonly placeholder="Auto-filled" style="background:#f5f5f5;">
+            <input type="text" id="stock-dept" readonly class="readonly-field" placeholder="Auto-filled" style="background:#f5f5f5;">
           </div>
           <div class="form-group">
             <label>Remarks</label>
@@ -526,9 +556,9 @@
       </div>
 
       <!-- ── f. Export All Data — Admin only ── -->
-      <div class="card admin-only" style="border-top: 4px solid #1d6f42;">
+      <div class="card admin-only export-all-card" style="border-top: 4px solid #1d6f42;">
         <h3>📊 Export All Data to Excel</h3>
-        <p style="font-size:13px; color:#546e7a; margin-bottom:16px;">
+        <p class="settings-muted-note" style="font-size:13px; color:#546e7a; margin-bottom:16px;">
           Download a complete Excel workbook with all your data in separate sheets.
           Great for backups, reports, or sharing with others.
         </p>
@@ -555,10 +585,10 @@
         <hr style="margin-bottom:16px;">
 
         <!-- Full export button -->
-        <div style="text-align:center; padding: 20px; background:#f0f7f0; border-radius:8px; border: 2px dashed #1d6f42;">
+        <div class="export-everything-box" style="text-align:center; padding: 20px; background:#f0f7f0; border-radius:8px; border: 2px dashed #1d6f42;">
           <div style="font-size:32px; margin-bottom:8px;">📗</div>
-          <div style="font-size:15px; font-weight:700; color:#1d6f42; margin-bottom:4px;">Export Everything</div>
-          <div style="font-size:12px; color:#546e7a; margin-bottom:16px;">
+          <div class="export-everything-title" style="font-size:15px; font-weight:700; color:#1d6f42; margin-bottom:4px;">Export Everything</div>
+          <div class="export-everything-sub" style="font-size:12px; color:#546e7a; margin-bottom:16px;">
             One Excel file · 4 sheets: Inventory, Requests, Stock-In, Employees
           </div>
           <button class="btn btn-excel-big" onclick="exportAllData()">
@@ -589,9 +619,9 @@
       </div>
 
       <!-- ── h. Admin: Reset Any Account Password (admin only) ── -->
-      <div class="card admin-only" style="border-top:4px solid #c62828;">
+      <div class="card admin-only admin-reset-card" style="border-top:4px solid #c62828;">
         <h3>🔐 Admin: Reset Account Password</h3>
-        <p style="font-size:12px;color:#546e7a;margin-bottom:12px;">
+        <p class="settings-muted-note" style="font-size:12px;color:#546e7a;margin-bottom:12px;">
           As Admin you can reset the password of any account.
         </p>
         <div id="admin-reset-msg" style="margin-bottom:10px;"></div>
@@ -649,3 +679,5 @@
 
 </body>
 </html>
+
+

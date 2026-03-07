@@ -49,6 +49,122 @@ function closeSidebar() {
   document.getElementById('overlay').classList.remove('show');
 }
 
+/* Theme Controller -------------------------------------------------------- */
+let themeMediaListenerBound = false;
+
+function getSystemTheme() {
+  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    return 'dark';
+  }
+  return 'light';
+}
+
+function getCurrentUsernameOrGuest() {
+  if (typeof getSession === 'function') {
+    const session = getSession();
+    if (session?.username) return session.username;
+  }
+  return '__guest__';
+}
+
+function getThemeMapFromSettings() {
+  const settings = getSettings() || {};
+  const map = settings.theme_by_user;
+  if (map && typeof map === 'object' && !Array.isArray(map)) return map;
+  return {};
+}
+
+function loadThemePreferenceForUser() {
+  const username = getCurrentUsernameOrGuest();
+  const saved = getThemeMapFromSettings()[username];
+  if (saved === 'light' || saved === 'dark') return saved;
+
+  const legacy = localStorage.getItem('theme');
+  if (legacy === 'light' || legacy === 'dark') return legacy;
+
+  const system = getSystemTheme();
+  return system === 'dark' ? 'dark' : 'light';
+}
+
+function getAppliedTheme() {
+  const rootTheme = document.documentElement.getAttribute('data-theme');
+  if (rootTheme === 'light' || rootTheme === 'dark') return rootTheme;
+  if (document.body.classList.contains('theme-dark')) return 'dark';
+  return 'light';
+}
+
+function updateThemeToggleUI(mode) {
+  const btn = document.getElementById('theme-toggle-btn');
+  if (!btn) return;
+  const next = mode === 'dark' ? 'light' : 'dark';
+  const icon = mode === 'dark' ? '☀️' : '🌙';
+  const label = mode === 'dark' ? 'Light Mode' : 'Dark Mode';
+  btn.innerHTML = `<span class="theme-icon" aria-hidden="true">${icon}</span><span class="theme-label">${label}</span>`;
+  btn.setAttribute('aria-pressed', String(mode === 'dark'));
+  btn.setAttribute('aria-label', `Switch to ${next} mode`);
+  btn.setAttribute('title', `Switch to ${next} mode`);
+}
+
+function applyTheme(mode) {
+  const normalized = mode === 'dark' ? 'dark' : 'light';
+
+  document.documentElement.setAttribute('data-theme', normalized);
+  document.documentElement.style.colorScheme = normalized;
+
+  document.body.classList.toggle('theme-dark', normalized === 'dark');
+  document.body.classList.toggle('theme-light', normalized === 'light');
+  document.body.setAttribute('data-theme', normalized);
+
+  updateThemeToggleUI(normalized);
+}
+
+function saveThemePreferenceForUser(mode) {
+  const normalized = mode === 'dark' ? 'dark' : 'light';
+  const username = getCurrentUsernameOrGuest();
+  const settings = getSettings() || {};
+  const themeMap = (settings.theme_by_user && typeof settings.theme_by_user === 'object' && !Array.isArray(settings.theme_by_user))
+    ? settings.theme_by_user
+    : {};
+  themeMap[username] = normalized;
+  saveSettings({ theme_by_user: themeMap });
+  localStorage.setItem('theme', normalized);
+}
+
+function toggleTheme() {
+  const next = getAppliedTheme() === 'dark' ? 'light' : 'dark';
+  applyTheme(next);
+  saveThemePreferenceForUser(next);
+}
+
+function refreshThemeForCurrentUser() {
+  applyTheme(loadThemePreferenceForUser());
+}
+
+function hasSavedThemeForUser(username) {
+  const saved = getThemeMapFromSettings()[username];
+  return saved === 'light' || saved === 'dark';
+}
+
+function initThemeController() {
+  refreshThemeForCurrentUser();
+
+  if (!window.matchMedia || themeMediaListenerBound) return;
+  themeMediaListenerBound = true;
+
+  const media = window.matchMedia('(prefers-color-scheme: dark)');
+  const onSystemThemeChange = (event) => {
+    const username = getCurrentUsernameOrGuest();
+    if (hasSavedThemeForUser(username)) return;
+    applyTheme(event.matches ? 'dark' : 'light');
+  };
+
+  if (typeof media.addEventListener === 'function') {
+    media.addEventListener('change', onSystemThemeChange);
+  } else if (typeof media.addListener === 'function') {
+    media.addListener(onSystemThemeChange);
+  }
+}
+
 
 /* ─────────────────────────────────────────────────────
    PAGE 1: INVENTORY DASHBOARD
@@ -96,7 +212,7 @@ function renderDashboard() {
   tbody.innerHTML = '';
 
   if (!items.length) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;">No items found.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);">No items found.</td></tr>';
   } else {
     items.forEach((item, i) => {
       const status = item.balance >= 10 ? 'ok' : item.balance > 0 ? 'low' : 'out';
@@ -177,7 +293,7 @@ function injectPrintHeader(targetId) {
     <div style="font-size:18px;font-weight:700;">${s.header_company || 'Office Name'}</div>
     <div style="font-size:12px;">${s.header_address || ''}</div>
     <div style="font-size:14px;font-weight:600;margin-top:6px;">${s.header_subtitle || 'Inventory Report'}</div>
-    <div style="font-size:11px;color:#555;margin-top:2px;">
+    <div style="font-size:11px;color:var(--muted);margin-top:2px;">
       Date Printed: ${new Date().toLocaleDateString('en-PH', { dateStyle: 'long' })}
     </div>
     <hr style="margin:10px 0;">
@@ -193,21 +309,21 @@ function injectSignatories(targetId) {
         <div class="name">${s.sig1_name || 'Prepared By'}</div>
         <div class="pos">${s.sig1_pos || ''}</div>
       </div>
-      <div style="margin-top:4px;font-size:11px;color:#888;">Prepared By</div>
+      <div style="margin-top:4px;font-size:11px;color:var(--muted);">Prepared By</div>
     </div>
     <div class="signatory">
       <div class="line">
         <div class="name">${s.sig2_name || 'Checked By'}</div>
         <div class="pos">${s.sig2_pos || ''}</div>
       </div>
-      <div style="margin-top:4px;font-size:11px;color:#888;">Checked By</div>
+      <div style="margin-top:4px;font-size:11px;color:var(--muted);">Checked By</div>
     </div>
     <div class="signatory">
       <div class="line">
         <div class="name">${s.sig3_name || 'Approved By'}</div>
         <div class="pos">${s.sig3_pos || ''}</div>
       </div>
-      <div style="margin-top:4px;font-size:11px;color:#888;">Approved By</div>
+      <div style="margin-top:4px;font-size:11px;color:var(--muted);">Approved By</div>
     </div>
   `;
 }
@@ -409,7 +525,7 @@ function renderRequestHistory() {
   tbody.innerHTML = '';
 
   if (!txns.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;">No records found.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);">No records found.</td></tr>';
   } else {
     txns.forEach(t => {
       tbody.innerHTML += `
@@ -549,7 +665,7 @@ function renderStockHistory() {
   tbody.innerHTML = '';
 
   if (!txns.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;">No records found.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);">No records found.</td></tr>';
   } else {
     txns.forEach(t => {
       tbody.innerHTML += `
@@ -727,7 +843,7 @@ function renderItems() {
         <td>${item.updated_at ? fmtDate(item.updated_at) : '—'}</td>
         <td>
           <button class="btn btn-outline btn-sm" onclick="editItem(${item.id})">✏️ Edit</button>
-          <button class="btn btn-sm" style="background:#fb8c00;color:#fff;" onclick="openAdjust(${item.id})">⚖️ Adjust</button>
+          <button class="btn btn-warning btn-sm" onclick="openAdjust(${item.id})">⚖️ Adjust</button>
           <button class="btn btn-danger btn-sm" onclick="deleteItem(${item.id})">🗑️</button>
         </td>
       </tr>`;
@@ -874,6 +990,8 @@ function saveSignatories() {
    ───────────────────────────────────────────────────── */
 initAccounts();        // seed default login accounts (defined in auth.js)
 initSeedData();        // seed default inventory data (defined in db.js)
+initThemeController(); // apply saved/system theme and setup theme listener
 checkAuth();           // show login screen if not logged in (defined in auth.js)
 renderDashboard();     // show the dashboard table
 populateDashDeptFilter(); // fill department filter dropdown
+

@@ -16,14 +16,123 @@
    CORE DATA HELPERS
    ───────────────────────────────────────────────────── */
 
-// Get a data table from localStorage (returns [] if empty)
-function getData(key) {
-  return JSON.parse(localStorage.getItem(key) || '[]');
+const REMOTE_STORAGE_KEYS = [
+  'departments',
+  'employees',
+  'items',
+  'transactions',
+  'settings',
+  'accounts',
+  'currentUser'
+];
+
+let backendAvailable = false;
+
+function readJson(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw == null) return fallback;
+    return JSON.parse(raw);
+  } catch (_err) {
+    return fallback;
+  }
 }
 
-// Save a data table to localStorage
+function writeJson(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+  syncStorageKey(key, value);
+}
+
+function hasMeaningfulLocalData(state) {
+  return REMOTE_STORAGE_KEYS.some((key) => {
+    const val = state[key];
+    if (Array.isArray(val)) return val.length > 0;
+    if (val && typeof val === 'object') return Object.keys(val).length > 0;
+    return val != null;
+  });
+}
+
+function buildLocalStateSnapshot() {
+  const state = {};
+  REMOTE_STORAGE_KEYS.forEach((key) => {
+    const raw = localStorage.getItem(key);
+    if (raw == null) return;
+    try {
+      state[key] = JSON.parse(raw);
+    } catch (_err) {
+      // Ignore malformed storage entries.
+    }
+  });
+  return state;
+}
+
+function hydrateLocalFromState(state) {
+  REMOTE_STORAGE_KEYS.forEach((key) => {
+    if (!Object.prototype.hasOwnProperty.call(state, key)) return;
+    localStorage.setItem(key, JSON.stringify(state[key]));
+  });
+}
+
+async function syncStorageKey(key, value) {
+  if (!backendAvailable || !REMOTE_STORAGE_KEYS.includes(key)) return;
+  try {
+    await fetch(`/api/key/${encodeURIComponent(key)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value })
+    });
+  } catch (_err) {
+    // Keep UI fully local-first even if backend sync fails.
+  }
+}
+
+// Allow other scripts (auth.js) to sync keys they manage directly.
+window.syncStorageKey = syncStorageKey;
+
+async function initBackendSync() {
+  try {
+    const healthRes = await fetch('/api/health', { cache: 'no-store' });
+    if (!healthRes.ok) return;
+
+    backendAvailable = true;
+    const stateRes = await fetch('/api/state', { cache: 'no-store' });
+    if (!stateRes.ok) return;
+
+    const payload = await stateRes.json();
+    const remoteHasData = !!payload.hasData;
+    const remoteState = payload.state || {};
+    const localState = buildLocalStateSnapshot();
+    const localHasData = hasMeaningfulLocalData(localState);
+
+    // Non-destructive migration strategy:
+    // 1) DB empty + local has data: import local to DB.
+    // 2) DB has data + local empty: hydrate local from DB.
+    // 3) Both have data: keep current local state unchanged.
+    if (!remoteHasData && localHasData) {
+      await fetch('/api/state/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ state: localState })
+      });
+      return;
+    }
+
+    if (remoteHasData && !localHasData) {
+      hydrateLocalFromState(remoteState);
+    }
+  } catch (_err) {
+    // Backend is optional for runtime: local mode remains functional.
+  }
+}
+
+// Get a data table from localStorage (returns [] if empty)
+function getData(key) {
+  return readJson(key, []);
+}
+
+// Save a data table to localStorage + backend
 function setData(key, val) {
-  localStorage.setItem(key, JSON.stringify(val));
+  writeJson(key, val);
 }
 
 // Generate next unique ID for a table array
@@ -49,13 +158,13 @@ function today() {
 
 // Load the entire settings object (stored as one JSON object)
 function getSettings() {
-  return JSON.parse(localStorage.getItem('settings') || '{}');
+  return readJson('settings', {});
 }
 
 // Merge new key-values into existing settings
 function saveSettings(obj) {
   const cur = getSettings();
-  localStorage.setItem('settings', JSON.stringify({ ...cur, ...obj }));
+  writeJson('settings', { ...cur, ...obj });
 }
 
 /* ─────────────────────────────────────────────────────
@@ -106,6 +215,9 @@ function initSeedData() {
     sig3_name: 'Department Head', sig3_pos: 'Approved By',
   });
 }
+
+// Fire-and-forget safe startup sync. App behavior remains local-first.
+initBackendSync();
 
 /*
 =====================================================
