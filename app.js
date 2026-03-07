@@ -49,8 +49,14 @@ function restoreLastVisitedPage() {
 
 let settingsDeleteHandlerBound = false;
 
-function themedDeleteConfirm(message) {
+function themedDeleteConfirm(message, options = {}) {
   return new Promise((resolve) => {
+    const {
+      title = 'Confirm Delete',
+      confirmLabel = 'Delete',
+      confirmButtonClass = 'btn-danger'
+    } = options;
+
     const existing = document.getElementById('delete-confirm-overlay');
     if (existing) existing.remove();
 
@@ -59,11 +65,11 @@ function themedDeleteConfirm(message) {
     overlay.className = 'delete-confirm-overlay show no-print';
     overlay.innerHTML = `
       <div class="delete-confirm-card" role="dialog" aria-modal="true" aria-labelledby="delete-confirm-title" aria-describedby="delete-confirm-message">
-        <h3 id="delete-confirm-title">Confirm Delete</h3>
-        <p id="delete-confirm-message">${message}</p>
+        <h3 id="delete-confirm-title"></h3>
+        <p id="delete-confirm-message"></p>
         <div class="delete-confirm-actions">
           <button type="button" id="delete-confirm-cancel" class="btn btn-outline btn-sm">Cancel</button>
-          <button type="button" id="delete-confirm-ok" class="btn btn-danger btn-sm">Delete</button>
+          <button type="button" id="delete-confirm-ok" class="btn ${confirmButtonClass} btn-sm"></button>
         </div>
       </div>
     `;
@@ -71,10 +77,26 @@ function themedDeleteConfirm(message) {
     document.body.appendChild(overlay);
     document.body.classList.add('modal-open');
 
+    const titleEl = overlay.querySelector('#delete-confirm-title');
+    const messageEl = overlay.querySelector('#delete-confirm-message');
     const cancelBtn = overlay.querySelector('#delete-confirm-cancel');
     const okBtn = overlay.querySelector('#delete-confirm-ok');
 
+    titleEl.textContent = title;
+    messageEl.textContent = message;
+    okBtn.textContent = confirmLabel;
+
+    let isClosed = false;
+
+    const onEsc = (event) => {
+      if (event.key === 'Escape') cleanup(false);
+    };
+
     const cleanup = (result) => {
+      if (isClosed) return;
+      isClosed = true;
+
+      document.removeEventListener('keydown', onEsc);
       document.body.classList.remove('modal-open');
       overlay.remove();
       resolve(result);
@@ -94,12 +116,6 @@ function themedDeleteConfirm(message) {
       if (event.target === overlay) cleanup(false);
     });
 
-    const onEsc = (event) => {
-      if (event.key === 'Escape') {
-        document.removeEventListener('keydown', onEsc);
-        cleanup(false);
-      }
-    };
     document.addEventListener('keydown', onEsc);
 
     setTimeout(() => okBtn.focus(), 0);

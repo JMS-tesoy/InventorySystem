@@ -166,7 +166,11 @@ async function doLogout() {
   let shouldLogout = false;
 
   if (typeof themedDeleteConfirm === 'function') {
-    shouldLogout = await themedDeleteConfirm('Log out of the system?');
+    shouldLogout = await themedDeleteConfirm('You are about to end your current session.', {
+      title: 'Confirm Logout',
+      confirmLabel: 'Log out',
+      confirmButtonClass: 'btn-warning'
+    });
   } else {
     shouldLogout = confirm('Log out of the system?');
   }
