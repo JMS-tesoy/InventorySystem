@@ -13,7 +13,7 @@ body {
   display: flex;
   min-height: 100vh;
   color-scheme: light;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition: none;
 }
 
 /* ── CSS Variables (Blue Theme) ───────────────────── */
@@ -152,6 +152,9 @@ body.theme-dark {
 .theme-toggle {
   position: static;
   z-index: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
@@ -161,16 +164,74 @@ body.theme-dark {
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 2px 10px rgba(0,0,0,0.16);
-  transition: transform 0.12s ease, background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  transition: none;
 }
-.theme-toggle:hover { transform: translateY(-1px); }
+.theme-toggle:hover { transform: none; }
+
+.theme-toggle .theme-icon-stack {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  display: inline-block;
+  color: var(--blue-main);
+  flex-shrink: 0;
+}
 
 .theme-toggle .theme-icon {
-  margin-right: 6px;
+  position: absolute;
+  inset: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: none;
+}
+
+.theme-toggle .theme-icon svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.theme-toggle .theme-icon-sun {
+  opacity: 0;
+  transform: rotate(25deg) scale(0.65);
+}
+
+.theme-toggle .theme-icon-moon {
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
+}
+
+.theme-toggle.is-dark .theme-icon-sun {
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
+}
+
+.theme-toggle.is-dark .theme-icon-moon {
+  opacity: 0;
+  transform: rotate(-25deg) scale(0.65);
 }
 
 .theme-toggle .theme-label {
   vertical-align: middle;
+  letter-spacing: 0.1px;
+  transition: none;
+}
+
+body.theme-dark .theme-toggle .theme-icon-stack {
+  color: var(--blue-light);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-toggle,
+  .theme-toggle .theme-icon,
+  .theme-toggle .theme-label {
+    transition: none !important;
+  }
 }
 
 /* ── Main content area ─────────────────────────────── */
@@ -356,6 +417,60 @@ hr { border: none; border-top: 1px solid var(--gray-border); margin: 16px 0; }
 }
 #overlay.show { display: block; }
 
+/* ── Themed delete confirmation modal ──────────────── */
+.delete-confirm-overlay {
+  display: none;
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw;
+  height: 100vh;
+  background: var(--overlay-bg);
+  z-index: 2147483646;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  pointer-events: auto;
+}
+
+.delete-confirm-overlay.show {
+  display: flex;
+}
+
+.delete-confirm-card {
+  width: 100%;
+  max-width: 360px;
+  margin: auto;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 16px 36px rgba(0,0,0,0.28);
+  padding: 16px;
+  pointer-events: auto;
+}
+
+.delete-confirm-card h3 {
+  margin-bottom: 8px;
+  color: var(--blue-dark);
+  font-size: 16px;
+}
+
+.delete-confirm-card p {
+  margin-bottom: 14px;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.delete-confirm-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+body.modal-open {
+  overflow: hidden;
+}
+
 /* ── Responsive (≤ 768px) ───────────────────────────── */
 @media (max-width: 768px) {
   #sidebar { transform: translateX(-100%); }
@@ -365,8 +480,7 @@ hr { border: none; border-top: 1px solid var(--gray-border); margin: 16px 0; }
   #topbar { padding-left: 54px; }
   #topbar { align-items: flex-start; }
   #topbar-title { line-height: 1.25; }
-  #topbar-user { gap: 6px; }
-  #topbar-user .topbar-name { display: none; }
+  #topbar-user { gap: 6px; flex-wrap: nowrap; }
   .form-row { flex-direction: column; }
   .stats-row { gap: 10px; }
 }
@@ -488,8 +602,23 @@ hr { border: none; border-top: 1px solid var(--gray-border); margin: 16px 0; }
   justify-content: space-between;
   gap: 12px;
 }
-#topbar-user { display: flex; align-items: center; gap: 8px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
-.topbar-name { font-size: 13px; font-weight: 600; color: var(--text); }
+#topbar-title {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#topbar-user {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  white-space: nowrap;
+}
 .role-badge {
   display: inline-block;
   padding: 2px 8px;

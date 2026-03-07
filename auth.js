@@ -106,6 +106,7 @@ function checkAuth() {
     hideLoginScreen();
     applyRoleUI(session.role);
     updateTopbarUser(session);
+    if (typeof restoreLastVisitedPage === 'function') restoreLastVisitedPage();
   }
 }
 
@@ -145,6 +146,7 @@ function doLogin() {
   applyRoleUI(match.role);
   updateTopbarUser(match);
   if (typeof refreshThemeForCurrentUser === 'function') refreshThemeForCurrentUser();
+  if (typeof restoreLastVisitedPage === 'function') restoreLastVisitedPage();
 
   // Clear login fields
   document.getElementById('login-username').value = '';
@@ -213,7 +215,6 @@ function updateTopbarUser(session) {
     : '<span class="role-badge user-badge">USER</span>';
   badge.innerHTML = `
     ${roleLabel}
-    <span class="topbar-name">${session.displayName}</span>
     <button id="theme-toggle-btn" class="theme-toggle no-print" onclick="toggleTheme()" aria-label="Switch theme" title="Switch theme">Dark Mode</button>
     <button class="btn btn-sm btn-logout" onclick="doLogout()">🚪 Logout</button>
   `;

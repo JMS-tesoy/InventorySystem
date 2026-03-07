@@ -9,16 +9,131 @@
    NAVIGATION — Switch between pages
    ───────────────────────────────────────────────────── */
 
+const NAV_PAGES = ['dashboard', 'request', 'addstocks', 'settings'];
+const LAST_PAGE_KEY = 'lastPageByUser';
+
+function normalizePageName(name) {
+  return NAV_PAGES.includes(name) ? name : 'dashboard';
+}
+
+function getLastPageMap() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(LAST_PAGE_KEY) || '{}');
+    return (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveLastVisitedPage(name) {
+  const page = normalizePageName(name);
+  const username = (typeof getCurrentUsernameOrGuest === 'function')
+    ? getCurrentUsernameOrGuest()
+    : '__guest__';
+  const map = getLastPageMap();
+  map[username] = page;
+  localStorage.setItem(LAST_PAGE_KEY, JSON.stringify(map));
+}
+
+function getLastVisitedPage() {
+  const username = (typeof getCurrentUsernameOrGuest === 'function')
+    ? getCurrentUsernameOrGuest()
+    : '__guest__';
+  const page = getLastPageMap()[username];
+  return normalizePageName(page);
+}
+
+function restoreLastVisitedPage() {
+  showPage(getLastVisitedPage());
+}
+
+let settingsDeleteHandlerBound = false;
+
+function themedDeleteConfirm(message) {
+  return new Promise((resolve) => {
+    const existing = document.getElementById('delete-confirm-overlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'delete-confirm-overlay';
+    overlay.className = 'delete-confirm-overlay show no-print';
+    overlay.innerHTML = `
+      <div class="delete-confirm-card" role="dialog" aria-modal="true" aria-labelledby="delete-confirm-title" aria-describedby="delete-confirm-message">
+        <h3 id="delete-confirm-title">Confirm Delete</h3>
+        <p id="delete-confirm-message">${message}</p>
+        <div class="delete-confirm-actions">
+          <button type="button" id="delete-confirm-cancel" class="btn btn-outline btn-sm">Cancel</button>
+          <button type="button" id="delete-confirm-ok" class="btn btn-danger btn-sm">Delete</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    document.body.classList.add('modal-open');
+
+    const cancelBtn = overlay.querySelector('#delete-confirm-cancel');
+    const okBtn = overlay.querySelector('#delete-confirm-ok');
+
+    const cleanup = (result) => {
+      document.body.classList.remove('modal-open');
+      overlay.remove();
+      resolve(result);
+    };
+
+    cancelBtn.addEventListener('click', (event) => {
+      event.preventDefault();
+      cleanup(false);
+    });
+
+    okBtn.addEventListener('click', (event) => {
+      event.preventDefault();
+      cleanup(true);
+    });
+
+    overlay.addEventListener('click', (event) => {
+      if (event.target === overlay) cleanup(false);
+    });
+
+    const onEsc = (event) => {
+      if (event.key === 'Escape') {
+        document.removeEventListener('keydown', onEsc);
+        cleanup(false);
+      }
+    };
+    document.addEventListener('keydown', onEsc);
+
+    setTimeout(() => okBtn.focus(), 0);
+  });
+}
+
+function bindSettingsDeleteHandler() {
+  if (settingsDeleteHandlerBound) return;
+  settingsDeleteHandlerBound = true;
+
+  document.addEventListener('click', (event) => {
+    const btn = event.target.closest('[data-delete-kind][data-delete-id]');
+    if (!btn) return;
+
+    const kind = btn.getAttribute('data-delete-kind');
+    const id = btn.getAttribute('data-delete-id');
+
+    if (kind === 'dept') deleteDept(id);
+    if (kind === 'emp') deleteEmp(id);
+    if (kind === 'item') deleteItem(id);
+  });
+}
+
 function showPage(name) {
+  const currentPage = normalizePageName(name);
+
   // Hide all pages
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   // Show the target page
-  document.getElementById('page-' + name).classList.add('active');
+  document.getElementById('page-' + currentPage).classList.add('active');
 
   // Update active state in sidebar
   document.querySelectorAll('#sidebar nav a').forEach(a => a.classList.remove('active'));
-  const order = ['dashboard', 'request', 'addstocks', 'settings'];
-  const idx = order.indexOf(name);
+  const idx = NAV_PAGES.indexOf(currentPage);
   document.querySelectorAll('#sidebar nav a')[idx]?.classList.add('active');
 
   // Update the top bar title
@@ -28,13 +143,20 @@ function showPage(name) {
     addstocks: '📥 Add Stocks',
     settings:  '⚙️ Settings'
   };
-  document.getElementById('topbar-title').textContent = titles[name] || '';
+  document.getElementById('topbar-title').textContent = titles[currentPage] || '';
+
+  if (typeof getSession === 'function' && typeof updateTopbarUser === 'function') {
+    const session = getSession();
+    if (session) updateTopbarUser(session);
+  }
 
   // Load data for the selected page
-  if (name === 'dashboard') { renderDashboard(); populateDashDeptFilter(); }
-  if (name === 'request')   { populateReqForm(); renderRequestHistory(); }
-  if (name === 'addstocks') { populateStockForm(); renderStockHistory(); }
-  if (name === 'settings')  { renderSettings(); }
+  if (currentPage === 'dashboard') { renderDashboard(); populateDashDeptFilter(); }
+  if (currentPage === 'request')   { populateReqForm(); renderRequestHistory(); }
+  if (currentPage === 'addstocks') { populateStockForm(); renderStockHistory(); }
+  if (currentPage === 'settings')  { renderSettings(); }
+
+  saveLastVisitedPage(currentPage);
 
   closeSidebar(); // auto-close on mobile
 }
@@ -96,10 +218,28 @@ function getAppliedTheme() {
 function updateThemeToggleUI(mode) {
   const btn = document.getElementById('theme-toggle-btn');
   if (!btn) return;
+
+  if (!btn.querySelector('.theme-icon-stack')) {
+    btn.innerHTML = `
+      <span class="theme-icon-stack" aria-hidden="true">
+        <span class="theme-icon theme-icon-moon">
+          <svg viewBox="0 0 24 24" focusable="false"><path d="M21 12.79A9 9 0 1 1 11.21 3c.17 0 .34.01.5.02A7 7 0 0 0 21 12.79z"></path></svg>
+        </span>
+        <span class="theme-icon theme-icon-sun">
+          <svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="M4.93 4.93l1.41 1.41"></path><path d="M17.66 17.66l1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="M4.93 19.07l1.41-1.41"></path><path d="M17.66 6.34l1.41-1.41"></path></svg>
+        </span>
+      </span>
+      <span class="theme-label"></span>
+    `;
+  }
+
   const next = mode === 'dark' ? 'light' : 'dark';
-  const icon = mode === 'dark' ? '☀️' : '🌙';
   const label = mode === 'dark' ? 'Light Mode' : 'Dark Mode';
-  btn.innerHTML = `<span class="theme-icon" aria-hidden="true">${icon}</span><span class="theme-label">${label}</span>`;
+
+  btn.classList.toggle('is-dark', mode === 'dark');
+  const labelEl = btn.querySelector('.theme-label');
+  if (labelEl) labelEl.textContent = label;
+
   btn.setAttribute('aria-pressed', String(mode === 'dark'));
   btn.setAttribute('aria-label', `Switch to ${next} mode`);
   btn.setAttribute('title', `Switch to ${next} mode`);
@@ -695,6 +835,10 @@ function renderSettings() {
   if (typeof populateAdminResetDropdown === 'function') populateAdminResetDropdown();
 }
 
+function sameId(a, b) {
+  return String(a) === String(b);
+}
+
 /* ── Departments ──────────────────────────────────── */
 
 function renderDepts() {
@@ -707,8 +851,8 @@ function renderDepts() {
         <td>${i + 1}</td>
         <td>${d.dept_name}</td>
         <td>
-          <button class="btn btn-outline btn-sm" onclick="editDept(${d.id})">✏️ Edit</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteDept(${d.id})">🗑️</button>
+          <button class="btn btn-outline btn-sm" onclick='editDept(${JSON.stringify(d.id)})'>✏️ Edit</button>
+          <button class="btn btn-danger btn-sm" data-delete-kind="dept" data-delete-id="${String(d.id)}">🗑️</button>
         </td>
       </tr>`;
   });
@@ -722,11 +866,12 @@ function renderDepts() {
 function saveDept() {
   if (!requireAdmin()) return;
   const name   = document.getElementById('dept-name').value.trim();
-  const editId = parseInt(document.getElementById('dept-edit-id').value) || null;
+  const editIdRaw = document.getElementById('dept-edit-id').value;
+  const editId = editIdRaw === '' ? null : editIdRaw;
   if (!name) return alert('Please enter a department name.');
   const depts = getData('departments');
   if (editId) {
-    const idx = depts.findIndex(d => d.id === editId);
+    const idx = depts.findIndex(d => sameId(d.id, editId));
     if (idx !== -1) depts[idx].dept_name = name;
   } else {
     depts.push({ id: newId(depts), dept_name: name });
@@ -738,10 +883,10 @@ function saveDept() {
 }
 
 function editDept(id) {
-  const dept = getData('departments').find(d => d.id === id);
+  const dept = getData('departments').find(d => sameId(d.id, id));
   if (!dept) return;
   document.getElementById('dept-name').value = dept.dept_name;
-  document.getElementById('dept-edit-id').value = id;
+  document.getElementById('dept-edit-id').value = String(dept.id);
 }
 
 function cancelDeptEdit() {
@@ -749,11 +894,13 @@ function cancelDeptEdit() {
   document.getElementById('dept-edit-id').value = '';
 }
 
-function deleteDept(id) {
+async function deleteDept(id) {
   if (!requireAdmin()) return;
-  if (!confirm('Delete this department?')) return;
-  setData('departments', getData('departments').filter(d => d.id !== id));
+  const ok = await themedDeleteConfirm('Delete this department?');
+  if (!ok) return;
+  setData('departments', getData('departments').filter(d => !sameId(d.id, id)));
   renderDepts();
+  renderEmps();
 }
 
 /* ── Employees ────────────────────────────────────── */
@@ -771,8 +918,8 @@ function renderEmps() {
         <td>${e.full_name}</td>
         <td>${dept?.dept_name || '—'}</td>
         <td>
-          <button class="btn btn-outline btn-sm" onclick="editEmp(${e.id})">✏️ Edit</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteEmp(${e.id})">🗑️</button>
+          <button class="btn btn-outline btn-sm" onclick='editEmp(${JSON.stringify(e.id)})'>✏️ Edit</button>
+          <button class="btn btn-danger btn-sm" data-delete-kind="emp" data-delete-id="${String(e.id)}">🗑️</button>
         </td>
       </tr>`;
   });
@@ -782,11 +929,12 @@ function saveEmp() {
   if (!requireAdmin()) return;
   const name   = document.getElementById('emp-name').value.trim();
   const deptId = parseInt(document.getElementById('emp-dept').value) || null;
-  const editId = parseInt(document.getElementById('emp-edit-id').value) || null;
+  const editIdRaw = document.getElementById('emp-edit-id').value;
+  const editId = editIdRaw === '' ? null : editIdRaw;
   if (!name) return alert('Please enter an employee name.');
   const emps = getData('employees');
   if (editId) {
-    const idx = emps.findIndex(e => e.id === editId);
+    const idx = emps.findIndex(e => sameId(e.id, editId));
     if (idx !== -1) { emps[idx].full_name = name; emps[idx].department_id = deptId; }
   } else {
     emps.push({ id: newId(emps), full_name: name, department_id: deptId });
@@ -797,11 +945,11 @@ function saveEmp() {
 }
 
 function editEmp(id) {
-  const emp = getData('employees').find(e => e.id === id);
+  const emp = getData('employees').find(e => sameId(e.id, id));
   if (!emp) return;
   document.getElementById('emp-name').value = emp.full_name;
   document.getElementById('emp-dept').value = emp.department_id || '';
-  document.getElementById('emp-edit-id').value = id;
+  document.getElementById('emp-edit-id').value = String(emp.id);
 }
 
 function cancelEmpEdit() {
@@ -810,10 +958,11 @@ function cancelEmpEdit() {
   document.getElementById('emp-edit-id').value = '';
 }
 
-function deleteEmp(id) {
+async function deleteEmp(id) {
   if (!requireAdmin()) return;
-  if (!confirm('Delete this employee?')) return;
-  setData('employees', getData('employees').filter(e => e.id !== id));
+  const ok = await themedDeleteConfirm('Delete this employee?');
+  if (!ok) return;
+  setData('employees', getData('employees').filter(e => !sameId(e.id, id)));
   renderEmps();
 }
 
@@ -842,9 +991,9 @@ function renderItems() {
         <td>${item.balance} ${badge}</td>
         <td>${item.updated_at ? fmtDate(item.updated_at) : '—'}</td>
         <td>
-          <button class="btn btn-outline btn-sm" onclick="editItem(${item.id})">✏️ Edit</button>
-          <button class="btn btn-warning btn-sm" onclick="openAdjust(${item.id})">⚖️ Adjust</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteItem(${item.id})">🗑️</button>
+          <button class="btn btn-outline btn-sm" onclick='editItem(${JSON.stringify(item.id)})'>✏️ Edit</button>
+          <button class="btn btn-warning btn-sm" onclick='openAdjust(${JSON.stringify(item.id)})'>⚖️ Adjust</button>
+          <button class="btn btn-danger btn-sm" data-delete-kind="item" data-delete-id="${String(item.id)}">🗑️</button>
         </td>
       </tr>`;
   });
@@ -856,12 +1005,13 @@ function saveItem() {
   const unit    = document.getElementById('item-unit').value.trim();
   const cat     = document.getElementById('item-cat').value.trim();
   const balance = parseInt(document.getElementById('item-balance').value) || 0;
-  const editId  = parseInt(document.getElementById('item-edit-id').value) || null;
+  const editIdRaw = document.getElementById('item-edit-id').value;
+  const editId = editIdRaw === '' ? null : editIdRaw;
   if (!name) return alert('Item name is required.');
 
   const items = getData('items');
   if (editId) {
-    const idx = items.findIndex(i => i.id === editId);
+    const idx = items.findIndex(i => sameId(i.id, editId));
     if (idx !== -1) {
       items[idx].item_name  = name;
       items[idx].unit       = unit;
@@ -877,13 +1027,13 @@ function saveItem() {
 }
 
 function editItem(id) {
-  const item = getData('items').find(i => i.id === id);
+  const item = getData('items').find(i => sameId(i.id, id));
   if (!item) return;
   document.getElementById('item-name').value    = item.item_name;
   document.getElementById('item-unit').value    = item.unit || '';
   document.getElementById('item-cat').value     = item.category || '';
   document.getElementById('item-balance').value = item.balance;
-  document.getElementById('item-edit-id').value = id;
+  document.getElementById('item-edit-id').value = String(item.id);
 }
 
 function cancelItemEdit() {
@@ -894,9 +1044,9 @@ function cancelItemEdit() {
 }
 
 function openAdjust(id) {
-  const item = getData('items').find(i => i.id === id);
+  const item = getData('items').find(i => sameId(i.id, id));
   if (!item) return;
-  adjustItemId = id;
+  adjustItemId = item.id;
   document.getElementById('item-adjust-name').textContent = item.item_name;
   document.getElementById('item-adj-balance').value = item.balance;
   document.getElementById('item-adj-reason').value  = '';
@@ -910,7 +1060,7 @@ function applyAdjust() {
   if (isNaN(newBal) || newBal < 0) return alert('Please enter a valid balance.');
 
   const items = getData('items');
-  const idx   = items.findIndex(i => i.id === adjustItemId);
+  const idx   = items.findIndex(i => sameId(i.id, adjustItemId));
   if (idx !== -1) { items[idx].balance = newBal; items[idx].updated_at = today(); }
   setData('items', items);
 
@@ -937,10 +1087,11 @@ function cancelAdjust() {
   document.getElementById('item-adjust-box').style.display = 'none';
 }
 
-function deleteItem(id) {
+async function deleteItem(id) {
   if (!requireAdmin()) return;
-  if (!confirm('Delete this item? Transaction history will NOT be deleted.')) return;
-  setData('items', getData('items').filter(i => i.id !== id));
+  const ok = await themedDeleteConfirm('Delete this item? Transaction history will NOT be deleted.');
+  if (!ok) return;
+  setData('items', getData('items').filter(i => !sameId(i.id, id)));
   renderItems();
 }
 
@@ -991,7 +1142,6 @@ function saveSignatories() {
 initAccounts();        // seed default login accounts (defined in auth.js)
 initSeedData();        // seed default inventory data (defined in db.js)
 initThemeController(); // apply saved/system theme and setup theme listener
+bindSettingsDeleteHandler(); // ensure all trash buttons work via delegated click handling
 checkAuth();           // show login screen if not logged in (defined in auth.js)
-renderDashboard();     // show the dashboard table
-populateDashDeptFilter(); // fill department filter dropdown
 
