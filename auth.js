@@ -162,8 +162,16 @@ function loginKeydown(e) {
 /* ─────────────────────────────────────────────────────
    LOGOUT
    ───────────────────────────────────────────────────── */
-function doLogout() {
-  if (!confirm('Log out of the system?')) return;
+async function doLogout() {
+  let shouldLogout = false;
+
+  if (typeof themedDeleteConfirm === 'function') {
+    shouldLogout = await themedDeleteConfirm('Log out of the system?');
+  } else {
+    shouldLogout = confirm('Log out of the system?');
+  }
+
+  if (!shouldLogout) return;
   clearSession();
   if (typeof refreshThemeForCurrentUser === 'function') refreshThemeForCurrentUser();
   // Reset body role class

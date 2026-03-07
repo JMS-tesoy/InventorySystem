@@ -26,3 +26,12 @@ This project now supports a real SQLite database backend while preserving the ex
 - `schema.sql` - SQLite schema
 - `package.json` - backend dependencies and scripts
 
+## Recent Updates
+
+- Dark mode implementation unified and applied consistently across pages/components.
+- Theme toggle refined (professional icon, instant switch behavior).
+- Topbar controls aligned consistently across pages.
+- Last visited page now persists per user after reload/login.
+- Settings trash-bin actions hardened (reliable delete handling for all rows).
+- Delete/confirm dialog replaced with an in-app themed modal (dark-mode aware), including logout confirmation.
+
