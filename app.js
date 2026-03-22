@@ -180,6 +180,7 @@ function showPage(name) {
     chatColorContainer.style.display = currentPage === 'chat' ? 'flex' : 'none';
     if (currentPage === 'chat' && typeof initChatColor === 'function') {
       initChatColor();
+      if (typeof loadChatHistory === 'function') loadChatHistory();
     }
   }
 

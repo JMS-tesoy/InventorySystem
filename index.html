@@ -805,31 +805,57 @@
       .chat-reaction-badge.bump { animation: bump 0.3s ease; }
     </style>
     <div class="page" id="page-chat">
-      <div class="card" style="display: flex; flex-direction: column; height: 70vh;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-          <select id="chat-member-dropdown" style="padding: 6px 10px; border: 1px solid var(--border-color, #dce6f0); border-radius: 4px; font-size: 14px; background: transparent; color: inherit;">
-            <option value="ALL">ALL (Broadcast)</option>
-            <option value="ADMIN">ADMIN</option>
-            <option value="IMPO">IMPO</option>
-            <option value="CAMO">CAMO</option>
-            <option value="FAO">FAO</option>
-            <option value="SCR">SCR</option>
-          </select>
-        </div>
-        <div id="chat-messages" style="flex-grow: 1; overflow-y: auto; border: 1px solid var(--border-color, #dce6f0); padding: 10px; margin-bottom: 10px; border-radius: 4px; display: flex; flex-direction: column; gap: 8px;">
-          <div style="text-align: center; color: #546e7a; font-size: 0.9em; margin-bottom: 10px;">Welcome to the team chat!</div>
-        </div>
-        <div style="display: flex; flex-direction: column; position: relative;">
-          <div id="chat-suggestions" style="display: none; position: absolute; bottom: 100%; left: 0; width: 300px; max-height: 180px; overflow-y: auto; background: var(--surface); border: 1px solid var(--border-color, #ccc); border-radius: 6px; box-shadow: 0 -4px 10px rgba(0,0,0,0.1); z-index: 10; margin-bottom: 5px;"></div>
-          <div id="chat-reply-preview" style="display: none; padding: 6px 10px; background: var(--blue-pale); border-left: 3px solid var(--blue-main); font-size: 12px; border-radius: 4px; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-            <span id="chat-reply-text" style="color: var(--blue-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%;"></span>
-            <button onclick="cancelReply()" style="background: none; border: none; cursor: pointer; color: var(--danger); font-size: 14px; display: inline-flex; padding: 2px;" title="Cancel Reply"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+      <div class="card" style="display: flex; flex-direction: row; height: 70vh; gap: 15px;">
+        
+        <div style="flex-grow: 1; display: flex; flex-direction: column; min-width: 0;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <select id="chat-member-dropdown" style="padding: 6px 10px; border: 1px solid var(--border-color, #dce6f0); border-radius: 4px; font-size: 14px; background: transparent; color: inherit;">
+              <option value="ALL">ALL (Broadcast)</option>
+              <option value="ADMIN">ADMIN</option>
+              <option value="IMPO">IMPO</option>
+              <option value="CAMO">CAMO</option>
+              <option value="FAO">FAO</option>
+              <option value="SCR">SCR</option>
+            </select>
           </div>
-          <div style="display: flex; gap: 10px;">
-            <input type="text" id="chat-input" placeholder="Type a message, '/' for commands, '@' to mention..." style="flex-grow: 1; padding: 10px; border: 1px solid var(--border-color, #dce6f0); border-radius: 4px; background: transparent; color: inherit;" onkeypress="handleChatKeyPress(event)" oninput="handleChatInput(event)" autocomplete="off">
-            <button class="btn btn-primary" onclick="sendChatMessage()" style="display: inline-flex; align-items: center; gap: 6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg> Send</button>
+          <div id="chat-messages" style="flex-grow: 1; overflow-y: auto; border: 1px solid var(--border-color, #dce6f0); padding: 10px; margin-bottom: 10px; border-radius: 4px; display: flex; flex-direction: column; gap: 8px;">
+            <div style="text-align: center; color: #546e7a; font-size: 0.9em; margin-bottom: 10px;">Welcome to the team chat!</div>
+          </div>
+          <div style="display: flex; flex-direction: column; position: relative;">
+            <div id="chat-suggestions" style="display: none; position: absolute; bottom: 100%; left: 0; width: 300px; max-height: 180px; overflow-y: auto; background: var(--surface); border: 1px solid var(--border-color, #ccc); border-radius: 6px; box-shadow: 0 -4px 10px rgba(0,0,0,0.1); z-index: 10; margin-bottom: 5px;"></div>
+            <div id="chat-reply-preview" style="display: none; padding: 6px 10px; background: var(--blue-pale); border-left: 3px solid var(--blue-main); font-size: 12px; border-radius: 4px; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+              <span id="chat-reply-text" style="color: var(--blue-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%;"></span>
+              <button onclick="cancelReply()" style="background: none; border: none; cursor: pointer; color: var(--danger); font-size: 14px; display: inline-flex; padding: 2px;" title="Cancel Reply"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+            </div>
+            <div id="chat-attachment-preview" style="display: none; padding: 6px 10px; background: var(--surface); border: 1px solid var(--border-color, #ccc); border-radius: 4px; margin-bottom: 5px; align-items: center; justify-content: space-between;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 18px;">📎</span>
+                <img id="chat-attachment-img" src="" style="max-height: 40px; border-radius: 4px;">
+              </div>
+              <button onclick="cancelAttachment()" style="background: none; border: none; cursor: pointer; color: var(--danger); font-size: 14px; display: inline-flex; padding: 2px;" title="Remove Attachment"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+            </div>
+            <div style="display: flex; gap: 10px;">
+              <button class="btn btn-outline" onclick="document.getElementById('chat-file').click()" style="padding: 10px; display: flex; align-items: center; justify-content: center;" title="Attach Image">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+              </button>
+              <input type="text" id="chat-input" placeholder="Type a message, '/' for commands, '@' to mention..." style="flex-grow: 1; padding: 10px; border: 1px solid var(--border-color, #dce6f0); border-radius: 4px; background: transparent; color: inherit;" onkeypress="handleChatKeyPress(event)" oninput="handleChatInput(event)" autocomplete="off">
+              <button class="btn btn-primary" onclick="sendChatMessage()" style="display: inline-flex; align-items: center; gap: 6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg> Send</button>
+            </div>
+            <input type="file" id="chat-file" accept="image/*" style="display: none;" onchange="handleChatFileSelect(event)">
           </div>
         </div>
+
+        <!-- New Right Panel: Online Users -->
+        <div style="width: 200px; border-left: 1px solid var(--border-color, #dce6f0); padding-left: 15px; display: flex; flex-direction: column;">
+          <h4 style="margin-bottom: 15px; font-size: 14px; color: var(--blue-dark); display: flex; align-items: center; gap: 6px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            Online
+          </h4>
+          <div id="chat-online-users-list" style="flex-grow: 1; overflow-y: auto;">
+            <!-- Users populated by JS -->
+          </div>
+        </div>
+        
       </div>
     </div><!-- END PAGE 5: Chat -->
 
@@ -885,9 +911,26 @@
       socket.on('chat_reaction', function(payload) {
         applyReaction(payload);
       });
+
+      socket.on('online_users', function(users) {
+        updateOnlineUsers(users);
+      });
     }
   } catch (e) {
     console.log('Socket.IO not initialized');
+  }
+
+  function notifyUserJoin() {
+    if (typeof socket === 'undefined' || !socket) return;
+    const session = JSON.parse(localStorage.getItem('currentUser') || 'null');
+    if (session && session.username) {
+      socket.emit('user_join', { username: session.username, displayName: session.displayName || session.username });
+    }
+  }
+
+  function notifyUserLeave() {
+    if (typeof socket === 'undefined' || !socket) return;
+    socket.emit('user_leave');
   }
 
   function handleChatKeyPress(event) {
@@ -904,15 +947,102 @@
     if (colorInput) colorInput.value = savedColor;
   }
 
+  let chatHistoryLoaded = false;
+  async function loadChatHistory() {
+    if (chatHistoryLoaded) return;
+    try {
+      const res = await fetch('/api/chat');
+      if (!res.ok) return;
+      const messages = await res.json();
+      
+      document.getElementById('chat-messages').innerHTML = '<div style="text-align: center; color: #546e7a; font-size: 0.9em; margin-bottom: 10px;">Welcome to the team chat!</div>';
+      
+      const session = JSON.parse(localStorage.getItem('currentUser') || 'null');
+      const currentUsername = session && session.username ? session.username : 'Guest';
+      
+      messages.forEach(m => {
+        const isSent = m.user === currentUsername;
+        const payload = { id: m.id, user: m.user, text: m.text, color: m.color, target: m.target, replyTo: m.reply_to ? JSON.parse(m.reply_to) : null, attachment: m.attachment, timestamp: m.timestamp };
+        displayChatMessage(payload, isSent ? 'sent' : 'received');
+        
+        const reactions = JSON.parse(m.reactions || '{}');
+        Object.keys(reactions).forEach(emoji => {
+          reactions[emoji].forEach(u => applyReaction({ msgId: m.id, emoji, user: u }));
+        });
+      });
+      chatHistoryLoaded = true;
+    } catch (e) { console.error('Failed to load chat history', e); }
+  }
+
   function updateChatColor(colorHex) {
     const session = JSON.parse(localStorage.getItem('currentUser') || 'null');
     const username = session && session.username ? session.username : 'Guest';
     localStorage.setItem('chatColor_' + username, colorHex);
   }
 
+  function updateOnlineUsers(users) {
+    const container = document.getElementById('chat-online-users-list');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    // Deduplicate by username in case of multiple browser tabs
+    const uniqueUsers = [];
+    const seen = new Set();
+    for (const u of users) {
+       if (!seen.has(u.username)) {
+         seen.add(u.username);
+         uniqueUsers.push(u);
+       }
+    }
+
+    uniqueUsers.forEach(u => {
+      const el = document.createElement('div');
+      el.style.display = 'flex';
+      el.style.alignItems = 'center';
+      el.style.gap = '8px';
+      el.style.marginBottom = '10px';
+      
+      const dot = document.createElement('span');
+      dot.style.width = '8px';
+      dot.style.height = '8px';
+      dot.style.backgroundColor = 'var(--success, #43a047)';
+      dot.style.borderRadius = '50%';
+      dot.style.boxShadow = '0 0 4px var(--success, #43a047)';
+      dot.style.flexShrink = '0';
+      
+      const name = document.createElement('span');
+      name.style.fontSize = '13px';
+      name.style.color = 'var(--text)';
+      name.style.whiteSpace = 'nowrap';
+      name.style.overflow = 'hidden';
+      name.style.textOverflow = 'ellipsis';
+      name.textContent = u.displayName || u.username;
+      
+      el.appendChild(dot);
+      el.appendChild(name);
+      container.appendChild(el);
+    });
+  }
+
+  function shareMessage(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(() => {
+        if (typeof showExportToast === 'function') showExportToast('📋 Message copied to clipboard!');
+      });
+    } else {
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      document.body.appendChild(textArea);
+      textArea.select();
+      try { document.execCommand('copy'); if (typeof showExportToast === 'function') showExportToast('📋 Message copied to clipboard!'); } catch (err) {}
+      document.body.removeChild(textArea);
+    }
+  }
+
   // --- Chat Advanced Features Logic ---
   
   let currentReplyTo = null;
+  let currentAttachment = null;
   
   function handleChatInput(e) {
     const input = e.target;
@@ -992,6 +1122,30 @@
     document.getElementById('chat-reply-text').textContent = '';
   }
 
+  function handleChatFileSelect(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5000000) { // 5MB limit
+      alert('File is too large. Please select an image under 5MB.');
+      e.target.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      currentAttachment = ev.target.result;
+      document.getElementById('chat-attachment-preview').style.display = 'flex';
+      document.getElementById('chat-attachment-img').src = currentAttachment;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function cancelAttachment() {
+    currentAttachment = null;
+    document.getElementById('chat-attachment-preview').style.display = 'none';
+    document.getElementById('chat-attachment-img').src = '';
+    document.getElementById('chat-file').value = '';
+  }
+
   function toggleReactions(msgId) {
     const box = document.getElementById(`reaction-box-${msgId}`);
     if(box) box.style.display = box.style.display === 'none' ? 'flex' : 'none';
@@ -1035,7 +1189,7 @@
   function sendChatMessage() {
     const input = document.getElementById('chat-input');
     const text = input.value.trim();
-    if (!text) return;
+    if (!text && !currentAttachment) return;
     
     const session = JSON.parse(localStorage.getItem('currentUser') || 'null');
     const username = session && session.username ? session.username : 'Guest';
@@ -1050,7 +1204,8 @@
       text: displayMsg,
       color: myColor,
       target: target,
-      replyTo: currentReplyTo
+      replyTo: currentReplyTo,
+      attachment: currentAttachment
     };
 
     // Client-side local command intercepts
@@ -1075,6 +1230,7 @@
     
     input.value = '';
     cancelReply();
+    cancelAttachment();
   }
 
   function hexToRgba(hex, alpha) {
@@ -1127,13 +1283,28 @@
         </div>`;
     }
     
+    let attachmentHtml = '';
+    if (msg.attachment) {
+      attachmentHtml = `<div style="margin-top: 6px;"><img src="${msg.attachment}" style="max-width: 100%; max-height: 250px; border-radius: 8px; cursor: pointer; border: 1px solid rgba(255,255,255,0.2);" onclick="window.open(this.src, '_blank')"></div>`;
+    }
+
+    let timeStr = '';
+    if (msg.timestamp) {
+       let ts = msg.timestamp;
+       if (!ts.endsWith('Z')) ts = ts.replace(' ', 'T') + 'Z';
+       timeStr = new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else {
+       timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    const timeHtml = `<div style="font-size: 0.65em; opacity: 0.7; text-align: right; margin-top: 5px;">${timeStr}</div>`;
+
     if (type === 'sent') {
       const c = msg.color || '#2c5282';
       msgDiv.style.backgroundColor = hexToRgba(c, 0.65);
       msgDiv.style.border = `1px solid ${hexToRgba(c, 0.4)}`;
       msgDiv.style.borderBottomRightRadius = '4px';
       msgDiv.style.color = 'white';
-      msgDiv.innerHTML = `${replyHtml}<strong>You:</strong> ${msg.text}`;
+      msgDiv.innerHTML = `${replyHtml}<strong>You:</strong> ${msg.text}${attachmentHtml}${timeHtml}`;
     } else {
       if (msg.color) {
         msgDiv.style.backgroundColor = hexToRgba(msg.color, 0.65);
@@ -1145,15 +1316,16 @@
       }
       msgDiv.style.borderBottomLeftRadius = '4px';
       msgDiv.style.color = 'white';
-      msgDiv.innerHTML = `${replyHtml}<strong>@${msg.user}</strong> ${msg.text}`;
+      msgDiv.innerHTML = `${replyHtml}<strong>@${msg.user}</strong> ${msg.text}${attachmentHtml}${timeHtml}`;
     }
     
     const actionsDiv = document.createElement('div');
     actionsDiv.className = 'chat-actions';
-    const cleanText = msg.text.replace(/<[^>]*>?/gm, '').replace(/[\n\r]/g, ' ').replace(/'/g, "\\'"); // Sanitize for JS string injection
+    const cleanText = (msg.text || '').replace(/<[^>]*>?/gm, '').replace(/[\n\r]/g, ' ').replace(/'/g, "\\'"); // Sanitize for JS string injection
     actionsDiv.innerHTML = `
       <button class="chat-action-btn" onclick="toggleReactions('${msg.id}')" title="React"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg></button>
       <button class="chat-action-btn" onclick="setReplyTo('${msg.id}', '${msg.user}', '${cleanText}')" title="Reply"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg></button>
+      <button class="chat-action-btn" onclick="shareMessage('${cleanText}')" title="Copy / Share"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg></button>
       <div id="reaction-box-${msg.id}" style="display: none; position: absolute; top: 100%; left: 0; background: var(--surface); border: 1px solid var(--border-color, #ccc); border-radius: 8px; padding: 4px; gap: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); z-index: 10;">
          ${['👍', '❤️', '😂', '😮', '😢', '🔥'].map(e => `<button class="chat-action-btn" onclick="sendReaction('${msg.id}', '${e}')">${e}</button>`).join('')}
       </div>

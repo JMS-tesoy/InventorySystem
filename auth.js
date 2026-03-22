@@ -221,6 +221,7 @@ function checkAuth() {
     hideLoginScreen();
     applyRoleUI(session.role);
     updateTopbarUser(session);
+    if (typeof notifyUserJoin === 'function') notifyUserJoin();
     if (typeof restoreLastVisitedPage === 'function') restoreLastVisitedPage();
   }
 }
@@ -262,6 +263,7 @@ function doLogin() {
   updateTopbarUser(match);
   if (typeof refreshThemeForCurrentUser === 'function') refreshThemeForCurrentUser();
   if (typeof restoreLastVisitedPage === 'function') restoreLastVisitedPage();
+  if (typeof notifyUserJoin === 'function') notifyUserJoin();
 
   // Clear login fields
   document.getElementById('login-username').value = '';
@@ -520,6 +522,7 @@ async function doLogout() {
 
   if (!shouldLogout) return;
   clearSession();
+  if (typeof notifyUserLeave === 'function') notifyUserLeave();
   if (typeof refreshThemeForCurrentUser === 'function') refreshThemeForCurrentUser();
   // Reset body role class
   document.body.classList.remove('role-admin', 'role-user');

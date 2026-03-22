@@ -7,7 +7,7 @@ const { Server } = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, { maxHttpBufferSize: 1e7 }); // Allow up to 10MB payloads for images
 const PORT = process.env.PORT || 3000;
 const DB_PATH = path.join(__dirname, 'data.sqlite3');
 const SCHEMA_PATH = path.join(__dirname, 'schema.sql');
@@ -144,10 +144,12 @@ async function initDb() {
   const schema = fs.readFileSync(SCHEMA_PATH, 'utf8');
   await exec(schema);
   await migrateAccountsFromKvStore();
+  // Auto-upgrade existing database schema to support attachments
+  try { await run("ALTER TABLE chat_history ADD COLUMN attachment TEXT"); } catch (e) { /* ignore if column already exists */ }
   await run("DELETE FROM kv_store WHERE key = 'currentUser'");
 }
 
-app.use(express.json({ limit: '5mb' }));
+app.use(express.json({ limit: '10mb' }));
 app.use(express.static(__dirname));
 
 app.get('/api/health', async (_req, res) => {
@@ -293,11 +295,62 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: err.message || 'Unexpected server error' });
 });
 
+app.get('/api/chat', async (req, res) => {
+  try {
+    const rows = await all('SELECT * FROM chat_history ORDER BY timestamp ASC LIMIT 200');
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+const onlineUsers = new Map();
+
 io.on('connection', (socket) => {
-  socket.on('chat_message', (msg) => {
+  socket.emit('online_users', Array.from(onlineUsers.values()));
+
+  socket.on('user_join', (user) => {
+    if (user && user.username) {
+      onlineUsers.set(socket.id, user);
+      io.emit('online_users', Array.from(onlineUsers.values()));
+    }
+  });
+
+  socket.on('user_leave', () => {
+    if (onlineUsers.has(socket.id)) {
+      onlineUsers.delete(socket.id);
+      io.emit('online_users', Array.from(onlineUsers.values()));
+    }
+  });
+
+  socket.on('disconnect', () => {
+    if (onlineUsers.has(socket.id)) {
+      onlineUsers.delete(socket.id);
+      io.emit('online_users', Array.from(onlineUsers.values()));
+    }
+  });
+
+  socket.on('chat_message', async (msg) => {
+    try {
+      await run(
+        `INSERT INTO chat_history (id, user, text, color, target, reply_to, attachment) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [msg.id, msg.user, msg.text, msg.color, msg.target, msg.replyTo ? JSON.stringify(msg.replyTo) : null, msg.attachment || null]
+      );
+    } catch (e) { console.error('Failed to save message', e); }
     socket.broadcast.emit('chat_message', msg);
   });
-  socket.on('chat_reaction', (msg) => {
+  socket.on('chat_reaction', async (msg) => {
+    try {
+      const row = await get(`SELECT reactions FROM chat_history WHERE id = ?`, [msg.msgId]);
+      if (row) {
+        const reactions = JSON.parse(row.reactions || '{}');
+        if (!reactions[msg.emoji]) reactions[msg.emoji] = [];
+        if (!reactions[msg.emoji].includes(msg.user)) {
+          reactions[msg.emoji].push(msg.user);
+          await run(`UPDATE chat_history SET reactions = ? WHERE id = ?`, [JSON.stringify(reactions), msg.msgId]);
+        }
+      }
+    } catch (e) { console.error('Failed to save reaction', e); }
     socket.broadcast.emit('chat_reaction', msg);
   });
 });

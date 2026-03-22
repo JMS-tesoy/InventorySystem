@@ -15,10 +15,14 @@ CREATE TABLE IF NOT EXISTS accounts (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
-CREATE TABLE IF NOT EXISTS messages (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  sender TEXT NOT NULL,
-  receiver TEXT NOT NULL,
-  content TEXT NOT NULL,
+CREATE TABLE IF NOT EXISTS chat_history (
+  id TEXT PRIMARY KEY,
+  user TEXT NOT NULL,
+  text TEXT NOT NULL,
+  color TEXT,
+  target TEXT,
+  reply_to TEXT,
+  reactions TEXT DEFAULT '{}',
+  attachment TEXT,
   timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
 );
