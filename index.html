@@ -117,16 +117,36 @@
           <input type="email" id="create-email" placeholder="Enter your email" autocomplete="email" />
         </div>
         <div class="form-group" style="margin-bottom:10px;">
-          <label class="login-field-label">Phone Number</label>
-          <input type="tel" id="create-phone" placeholder="Enter your phone number" autocomplete="tel" />
-        </div>
-        <div class="form-group" style="margin-bottom:10px;">
           <label class="login-field-label">Password</label>
-          <input type="password" id="create-password" placeholder="Minimum 6 characters" autocomplete="new-password" />
+          <div style="position:relative;">
+            <input type="password" id="create-password" placeholder="Minimum 6 characters" autocomplete="new-password" style="padding-right:42px;" />
+            <button
+              id="toggle-create-pwd-btn"
+              type="button"
+              aria-label="Show password"
+              title="Show password"
+              onclick="togglePasswordVisibility('create-password', 'toggle-create-pwd-btn')"
+              style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:0;color:#546e7a;"
+            >
+              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" focusable="false" aria-hidden="true" style="width:20px;height:20px;fill:currentColor;"><path d="M12 5c5.3 0 9.3 4.2 10 6.8a1 1 0 0 1 0 .4C21.3 14.8 17.3 19 12 19S2.7 14.8 2 12.2a1 1 0 0 1 0-.4C2.7 9.2 6.7 5 12 5zm0 2c-3.9 0-7 2.9-7.9 5 .9 2.1 4 5 7.9 5s7-2.9 7.9-5c-.9-2.1-4-5-7.9-5zm0 2.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5z"/></svg>
+            </button>
+          </div>
         </div>
         <div class="form-group" style="margin-bottom:6px;">
           <label class="login-field-label">Confirm Password</label>
-          <input type="password" id="create-confirm-password" placeholder="Re-enter password" autocomplete="new-password" />
+          <div style="position:relative;">
+            <input type="password" id="create-confirm-password" placeholder="Re-enter password" autocomplete="new-password" style="padding-right:42px;" />
+            <button
+              id="toggle-create-confirm-pwd-btn"
+              type="button"
+              aria-label="Show password"
+              title="Show password"
+              onclick="togglePasswordVisibility('create-confirm-password', 'toggle-create-confirm-pwd-btn')"
+              style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:0;color:#546e7a;"
+            >
+              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" focusable="false" aria-hidden="true" style="width:20px;height:20px;fill:currentColor;"><path d="M12 5c5.3 0 9.3 4.2 10 6.8a1 1 0 0 1 0 .4C21.3 14.8 17.3 19 12 19S2.7 14.8 2 12.2a1 1 0 0 1 0-.4C2.7 9.2 6.7 5 12 5zm0 2c-3.9 0-7 2.9-7.9 5 .9 2.1 4 5 7.9 5s7-2.9 7.9-5c-.9-2.1-4-5-7.9-5zm0 2.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5z"/></svg>
+            </button>
+          </div>
         </div>
         <div id="create-account-error" class="login-action-error" aria-live="polite"></div>
         <div class="login-action-buttons">
@@ -482,8 +502,8 @@
             <input type="text" id="dept-name" placeholder="e.g. Finance">
           </div>
           <input type="hidden" id="dept-edit-id">
-          <button class="btn btn-primary" onclick="saveDept()">Save Department</button>
-          <button class="btn btn-outline btn-sm" onclick="cancelDeptEdit()">Cancel</button>
+          <button class="btn btn-primary" onclick="saveDept()">Add New Department</button>
+          <button class="btn btn-outline" onclick="cancelDeptEdit()">Cancel</button>
         </div>
         <div class="table-wrap">
           <table>
@@ -507,7 +527,7 @@
           </div>
           <input type="hidden" id="emp-edit-id">
           <button class="btn btn-primary" onclick="saveEmp()">Save Employee</button>
-          <button class="btn btn-outline btn-sm" onclick="cancelEmpEdit()">Cancel</button>
+          <button class="btn btn-outline" onclick="cancelEmpEdit()">Cancel</button>
         </div>
         <div class="table-wrap">
           <table>
@@ -539,7 +559,7 @@
           </div>
           <input type="hidden" id="item-edit-id">
           <button class="btn btn-primary" onclick="saveItem()">Save Item</button>
-          <button class="btn btn-outline btn-sm" onclick="cancelItemEdit()">Cancel</button>
+          <button class="btn btn-outline" onclick="cancelItemEdit()">Cancel</button>
         </div>
 
         <!-- Manual balance adjustment panel -->
@@ -555,7 +575,7 @@
               <input type="text" id="item-adj-reason" placeholder="e.g. Physical count adjustment">
             </div>
             <button class="btn" onclick="applyAdjust()" style="background:var(--warning);color:#fff;">Apply</button>
-            <button class="btn btn-outline btn-sm" onclick="cancelAdjust()">Cancel</button>
+            <button class="btn btn-outline" onclick="cancelAdjust()">Cancel</button>
           </div>
         </div>
 
@@ -769,5 +789,3 @@
 
 </body>
 </html>
-
-

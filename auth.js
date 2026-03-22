@@ -267,8 +267,6 @@ function submitCreateAccountDialog(event) {
   const cleanDisplayName = (document.getElementById('create-display-name').value || '').trim();
   const username = (document.getElementById('create-username').value || '').trim().toLowerCase();
   const email = (document.getElementById('create-email').value || '').trim().toLowerCase();
-  const phone = (document.getElementById('create-phone').value || '').trim();
-  const normalizedPhone = normalizePhone(phone);
   const password = document.getElementById('create-password').value || '';
   const confirmPassword = document.getElementById('create-confirm-password').value || '';
 
@@ -289,11 +287,6 @@ function submitCreateAccountDialog(event) {
     return;
   }
 
-  if (normalizedPhone.length < 7) {
-    setLoginActionMessage('create-account-error', 'Please enter a valid phone number.');
-    return;
-  }
-
   const accounts = JSON.parse(localStorage.getItem('accounts') || '[]');
   const exists = accounts.some(a => (a.username || '').toLowerCase() === username);
   if (exists) {
@@ -304,12 +297,6 @@ function submitCreateAccountDialog(event) {
   const emailExists = accounts.some(a => (a.email || '').toLowerCase() === email);
   if (emailExists) {
     setLoginActionMessage('create-account-error', 'That email is already in use.');
-    return;
-  }
-
-  const phoneExists = accounts.some(a => normalizePhone(a.phone) === normalizedPhone);
-  if (phoneExists) {
-    setLoginActionMessage('create-account-error', 'That phone number is already in use.');
     return;
   }
 
@@ -330,8 +317,7 @@ function submitCreateAccountDialog(event) {
     password,
     role: 'user',
     displayName: cleanDisplayName,
-    email,
-    phone
+    email
   });
   saveAuthKey('accounts', accounts);
 
@@ -343,7 +329,6 @@ function submitCreateAccountDialog(event) {
   document.getElementById('create-display-name').value = '';
   document.getElementById('create-username').value = '';
   document.getElementById('create-email').value = '';
-  document.getElementById('create-phone').value = '';
   document.getElementById('create-password').value = '';
   document.getElementById('create-confirm-password').value = '';
   closeLoginActionDialog('create-account-dialog');
@@ -667,3 +652,22 @@ function toggleLoginPassword() {
   }
 }
 
+// Generic toggle for any password field with a toggle button
+function togglePasswordVisibility(inputId, btnId) {
+  const inp = document.getElementById(inputId);
+  const btn = document.getElementById(btnId);
+  if (!inp || !btn) return;
+  const eyeIcon = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" focusable="false" aria-hidden="true" style="width:20px;height:20px;fill:currentColor;"><path d="M12 5c5.3 0 9.3 4.2 10 6.8a1 1 0 0 1 0 .4C21.3 14.8 17.3 19 12 19S2.7 14.8 2 12.2a1 1 0 0 1 0-.4C2.7 9.2 6.7 5 12 5zm0 2c-3.9 0-7 2.9-7.9 5 .9 2.1 4 5 7.9 5s7-2.9 7.9-5c-.9-2.1-4-5-7.9-5zm0 2.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5z"/></svg>';
+  const eyeOffIcon = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" focusable="false" aria-hidden="true" style="width:20px;height:20px;fill:currentColor;"><path d="M3.3 4.7a1 1 0 1 1 1.4-1.4l14.6 14.6a1 1 0 1 1-1.4 1.4l-2.1-2.1A11.8 11.8 0 0 1 12 19C6.7 19 2.7 14.8 2 12.2a1 1 0 0 1 0-.4c.4-1.6 2.1-4.1 4.8-5.8L3.3 4.7zM8.5 7.4C6.4 8.7 5 10.6 4.1 12c.9 2.1 4 5 7.9 5 1.2 0 2.3-.3 3.4-.7l-2-2A3.5 3.5 0 0 1 9.7 10.6l-1.2-1.2zm10.7 4.6c-.9-2.1-4-5-7.9-5-.7 0-1.4.1-2 .2L7.8 5.7A11.6 11.6 0 0 1 12 5c5.3 0 9.3 4.2 10 6.8a1 1 0 0 1 0 .4 11.2 11.2 0 0 1-3.4 4.9l-1.4-1.4c.9-.9 1.6-2 2-2.7z"/></svg>';
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    btn.innerHTML = eyeOffIcon;
+    btn.setAttribute('aria-label', 'Hide password');
+    btn.setAttribute('title', 'Hide password');
+  } else {
+    inp.type = 'password';
+    btn.innerHTML = eyeIcon;
+    btn.setAttribute('aria-label', 'Show password');
+    btn.setAttribute('title', 'Show password');
+  }
+}
