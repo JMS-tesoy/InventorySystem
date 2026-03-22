@@ -2,8 +2,12 @@ const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
+const http = require('http');
+const { Server } = require('socket.io');
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
 const PORT = process.env.PORT || 3000;
 const DB_PATH = path.join(__dirname, 'data.sqlite3');
 const SCHEMA_PATH = path.join(__dirname, 'schema.sql');
@@ -289,9 +293,15 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: err.message || 'Unexpected server error' });
 });
 
+io.on('connection', (socket) => {
+  socket.on('chat_message', (msg) => {
+    socket.broadcast.emit('chat_message', msg);
+  });
+});
+
 initDb()
   .then(() => {
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(`InventorySystem server running at http://localhost:${PORT}`);
     });
   })

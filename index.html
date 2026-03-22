@@ -207,6 +207,9 @@
     <a onclick="showPage('addstocks')">
       <span class="icon">📥</span> Add Stocks
     </a>
+    <a onclick="showPage('chat')">
+      <span class="icon">💬</span> Chat Member
+    </a>
     <a onclick="showPage('settings')">
       <span class="icon">⚙️</span> Settings
     </a>
@@ -752,6 +755,42 @@
 
     </div><!-- END PAGE 4: Settings -->
 
+    <!-- ─────────────────────────────────────────────────
+         PAGE 5: CHAT
+         ───────────────────────────────────────────────── -->
+    <style>
+      /* Align dropdown options background with the active theme */
+      #chat-member-dropdown option {
+        background-color: #ffffff;
+        color: #333333;
+      }
+      html[data-theme='dark'] #chat-member-dropdown option {
+        background-color: #1e293b;
+        color: #eceff1;
+      }
+    </style>
+    <div class="page" id="page-chat">
+      <div class="card" style="display: flex; flex-direction: column; height: 70vh;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <select id="chat-member-dropdown" style="padding: 6px 10px; border: 1px solid var(--border-color, #dce6f0); border-radius: 4px; font-size: 14px; background: transparent; color: inherit;">
+            <option value="ALL">ALL (Broadcast)</option>
+            <option value="ADMIN">ADMIN</option>
+            <option value="IMPO">IMPO</option>
+            <option value="CAMO">CAMO</option>
+            <option value="FAO">FAO</option>
+            <option value="SCR">SCR</option>
+          </select>
+        </div>
+        <div id="chat-messages" style="flex-grow: 1; overflow-y: auto; border: 1px solid var(--border-color, #dce6f0); padding: 10px; margin-bottom: 10px; border-radius: 4px; display: flex; flex-direction: column; gap: 8px;">
+          <div style="text-align: center; color: #546e7a; font-size: 0.9em; margin-bottom: 10px;">Welcome to the team chat!</div>
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <input type="text" id="chat-input" placeholder="Type your message here..." style="flex-grow: 1; padding: 10px; border: 1px solid var(--border-color, #dce6f0); border-radius: 4px; background: transparent; color: inherit;" onkeypress="handleChatKeyPress(event)">
+          <button class="btn btn-primary" onclick="sendChatMessage()">Send</button>
+        </div>
+      </div>
+    </div><!-- END PAGE 5: Chat -->
+
   </div><!-- end #content -->
 </div><!-- end #main -->
 
@@ -786,6 +825,74 @@
 <script src="auth.js"></script>
 <script src="app.js"></script>
 <script src="export.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  // Chat Feature Logic
+  let socket;
+  try {
+    if (typeof io !== 'undefined') {
+      socket = io();
+      socket.on('chat_message', function(msg) {
+        displayChatMessage(msg.user, msg.text, 'received');
+      });
+    }
+  } catch (e) {
+    console.log('Socket.IO not initialized');
+  }
+
+  function handleChatKeyPress(event) {
+    if (event.key === 'Enter') {
+      sendChatMessage();
+    }
+  }
+
+  function sendChatMessage() {
+    const input = document.getElementById('chat-input');
+    const text = input.value.trim();
+    if (!text) return;
+    
+    const session = JSON.parse(localStorage.getItem('currentUser') || 'null');
+    const username = session && session.username ? session.username : 'Guest';
+    const target = document.getElementById('chat-member-dropdown').value;
+    
+    const displayMsg = target && target !== 'ALL' ? `<span style="font-size: 0.8em; background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 4px; margin-right: 5px; display: inline-block; margin-bottom: 4px;">@${target}</span><br/>${text}` : text;
+    
+    // Display locally
+    displayChatMessage(username, displayMsg, 'sent');
+    
+    // Send to server
+    if (socket) {
+      socket.emit('chat_message', { user: username, text: displayMsg, target: target });
+    }
+    
+    input.value = '';
+  }
+
+  function displayChatMessage(user, text, type) {
+    const chatMessages = document.getElementById('chat-messages');
+    const msgDiv = document.createElement('div');
+    
+    msgDiv.style.maxWidth = '70%';
+    msgDiv.style.padding = '8px 12px';
+    msgDiv.style.borderRadius = '8px';
+    msgDiv.style.wordWrap = 'break-word';
+    
+    if (type === 'sent') {
+      msgDiv.style.alignSelf = 'flex-end';
+      msgDiv.style.backgroundColor = '#1d6f42';
+      msgDiv.style.color = 'white';
+      msgDiv.innerHTML = `<strong>You:</strong> <br/>${text}`;
+    } else {
+      msgDiv.style.alignSelf = 'flex-start';
+      msgDiv.style.backgroundColor = '#e0e0e0';
+      msgDiv.style.color = '#333';
+      msgDiv.innerHTML = `<strong>${user}:</strong> <br/>${text}`;
+    }
+    
+    chatMessages.appendChild(msgDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+</script>
 
 </body>
 </html>

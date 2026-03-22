@@ -9,7 +9,7 @@
    NAVIGATION — Switch between pages
    ───────────────────────────────────────────────────── */
 
-const NAV_PAGES = ['dashboard', 'request', 'addstocks', 'settings'];
+const NAV_PAGES = ['dashboard', 'request', 'addstocks', 'chat', 'settings'];
 const LAST_PAGE_KEY = 'lastPageByUser';
 
 function normalizePageName(name) {
@@ -157,6 +157,7 @@ function showPage(name) {
     dashboard: '📊 Inventory Dashboard',
     request:   '📤 Less / Request',
     addstocks: '📥 Add Stocks',
+    chat:      '💬 Team Chat',
     settings:  '⚙️ Settings'
   };
   document.getElementById('topbar-title').textContent = titles[currentPage] || '';
@@ -1160,4 +1161,3 @@ initSeedData();        // seed default inventory data (defined in db.js)
 initThemeController(); // apply saved/system theme and setup theme listener
 bindSettingsDeleteHandler(); // ensure all trash buttons work via delegated click handling
 checkAuth();           // show login screen if not logged in (defined in auth.js)
-
