@@ -396,6 +396,22 @@ function submitCreateAccountDialog(event) {
   });
   saveAuthKey('accounts', accounts);
 
+  // If invited via a specific department link, automatically create an Employee profile
+  const deptInput = document.getElementById('create-department-id');
+  if (deptInput && deptInput.value) {
+    const emps = JSON.parse(localStorage.getItem('employees') || '[]');
+    const empExists = emps.some(e => (e.full_name || '').toLowerCase() === cleanDisplayName.toLowerCase());
+    if (!empExists) {
+      const nextEmpId = emps.reduce((max, e) => Math.max(max, Number(e.id) || 0), 0) + 1;
+      emps.push({
+        id: nextEmpId,
+        full_name: cleanDisplayName,
+        department_id: parseInt(deptInput.value, 10)
+      });
+      saveAuthKey('employees', emps);
+    }
+  }
+
   const userField = document.getElementById('login-username');
   const passField = document.getElementById('login-password');
   if (userField) userField.value = username;

@@ -9,7 +9,7 @@
    NAVIGATION — Switch between pages
    ───────────────────────────────────────────────────── */
 
-const NAV_PAGES = ['dashboard', 'request', 'addstocks', 'chat', 'settings'];
+const NAV_PAGES = ['dashboard', 'request', 'addstocks', 'chat', 'settings', 'configuration'];
 const LAST_PAGE_KEY = 'lastPageByUser';
 
 function normalizePageName(name) {
@@ -158,7 +158,8 @@ function showPage(name) {
     request:   '📤 Less / Request',
     addstocks: '📥 Add Stocks',
     chat:      '💬 Team Chat',
-    settings:  '⚙️ Settings'
+    settings:  '⚙️ Settings',
+    configuration: '🛠️ Configuration'
   };
   document.getElementById('topbar-title').textContent = titles[currentPage] || '';
 
@@ -172,6 +173,7 @@ function showPage(name) {
   if (currentPage === 'request')   { populateReqForm(); renderRequestHistory(); }
   if (currentPage === 'addstocks') { populateStockForm(); renderStockHistory(); }
   if (currentPage === 'settings')  { renderSettings(); }
+  if (currentPage === 'configuration') { loadConfiguration(); }
 
   saveLastVisitedPage(currentPage);
 
@@ -329,6 +331,8 @@ function clearDashFilters() {
 // Main function: render the inventory table with current filters
 function renderDashboard() {
   let items = getData('items');
+  const s = getSettings();
+  const threshold = parseInt(s.low_stock_threshold) || 10;
 
   // Apply search filter
   const search = document.getElementById('dash-search').value.toLowerCase();
@@ -336,8 +340,8 @@ function renderDashboard() {
 
   // Apply status filter
   const statusF = document.getElementById('dash-status').value;
-  if (statusF === 'ok')  items = items.filter(i => i.balance >= 10);
-  if (statusF === 'low') items = items.filter(i => i.balance > 0 && i.balance < 10);
+  if (statusF === 'ok')  items = items.filter(i => i.balance >= threshold);
+  if (statusF === 'low') items = items.filter(i => i.balance > 0 && i.balance < threshold);
   if (statusF === 'out') items = items.filter(i => i.balance === 0);
 
   // Sort alphabetically by item name
@@ -351,7 +355,7 @@ function renderDashboard() {
     tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);">No items found.</td></tr>';
   } else {
     items.forEach((item, i) => {
-      const status = item.balance >= 10 ? 'ok' : item.balance > 0 ? 'low' : 'out';
+      const status = item.balance >= threshold ? 'ok' : item.balance > 0 ? 'low' : 'out';
       const badge = status === 'ok'
         ? `<span class="badge badge-ok">OK</span>`
         : status === 'low'
@@ -374,8 +378,8 @@ function renderDashboard() {
   // Update the stat summary boxes
   const all = getData('items');
   const outCount  = all.filter(i => i.balance === 0).length;
-  const lowCount  = all.filter(i => i.balance > 0 && i.balance < 10).length;
-  const okCount   = all.filter(i => i.balance >= 10).length;
+  const lowCount  = all.filter(i => i.balance > 0 && i.balance < threshold).length;
+  const okCount   = all.filter(i => i.balance >= threshold).length;
   document.getElementById('stat-boxes').innerHTML = `
     <div class="stat-box ok">    <div class="val">${okCount}</div>  <div class="lbl">In Stock</div></div>
     <div class="stat-box warn">  <div class="val">${lowCount}</div> <div class="lbl">Low Stock</div></div>
@@ -521,17 +525,17 @@ function addRequestItem() {
   });
 
   const html = `
-    <div class="item-row" id="${rowId}">
-      <div class="form-group" style="min-width:200px;">
+    <div class="item-row" id="${rowId}" style="display: flex; align-items: flex-end; gap: 10px; margin-bottom: 20px;">
+      <div class="form-group" style="min-width:200px; position: relative; margin-bottom: 0;">
         <label>Item</label>
         <select onchange="onRequestItemChange(this, '${rowId}')">${opts}</select>
-        <div class="balance-hint" id="hint-${rowId}"></div>
+        <div class="balance-hint" id="hint-${rowId}" style="position: absolute; top: 100%; left: 0; font-size: 11px; margin-top: 4px; white-space: nowrap;"></div>
       </div>
-      <div class="form-group" style="max-width:100px;">
+      <div class="form-group" style="max-width:100px; margin-bottom: 0;">
         <label>Qty</label>
         <input type="number" id="qty-${rowId}" min="1" placeholder="0">
       </div>
-      <button class="btn btn-danger btn-sm" onclick="document.getElementById('${rowId}').remove()">✕</button>
+      <button class="btn btn-danger btn-sm" style="padding: 8px 12px; height: 35px;" onclick="document.getElementById('${rowId}').remove()" title="Remove item">✕</button>
     </div>`;
 
   document.getElementById('req-items-container').insertAdjacentHTML('beforeend', html);
@@ -970,9 +974,10 @@ function renderItems() {
   const items = getData('items');
   const tbody = document.getElementById('item-tbody');
   tbody.innerHTML = '';
+  const threshold = parseInt(getSettings().low_stock_threshold) || 10;
 
   items.sort((a, b) => a.item_name.localeCompare(b.item_name)).forEach((item, i) => {
-    const badge = item.balance >= 10
+    const badge = item.balance >= threshold
       ? `<span class="badge badge-ok">OK</span>`
       : item.balance > 0
       ? `<span class="badge badge-low">Low</span>`
@@ -1131,6 +1136,139 @@ function saveSignatories() {
   alert('Signatories saved!');
 }
 
+/* ── Configuration & Danger Zone ──────────────────── */
+
+function loadConfiguration() {
+  const s = getSettings();
+  const imgEl = document.getElementById('chat-img-quality');
+  const lowStockEl = document.getElementById('config-low-stock');
+  const regEl = document.getElementById('config-registration');
+  
+  if (imgEl) imgEl.value = s.chat_img_quality || 'medium';
+  if (lowStockEl) lowStockEl.value = s.low_stock_threshold || 10;
+  if (regEl) {
+    regEl.value = s.disable_registration || 'false';
+    toggleInviteLinkVisibility(); // Make sure the UI matches the loaded setting
+  }
+}
+
+function toggleInviteLinkVisibility() {
+  const regEl = document.getElementById('config-registration');
+  const inviteContainer = document.getElementById('invite-link-container');
+
+  if (regEl && inviteContainer) {
+    if (regEl.value === 'true') {
+      inviteContainer.style.display = 'flex';
+      populateInviteDeptDropdown();
+      updateInviteLink();
+    } else {
+      inviteContainer.style.display = 'none';
+    }
+  }
+}
+
+function populateInviteDeptDropdown() {
+  const sel = document.getElementById('config-invite-dept');
+  if (!sel) return;
+  const currentVal = sel.value;
+  const depts = getData('departments');
+  sel.innerHTML = '<option value="">-- No Specific Department --</option>';
+  depts.forEach(d => { sel.innerHTML += `<option value="${d.id}">${d.dept_name}</option>`; });
+  if (Array.from(sel.options).some(opt => opt.value === currentVal)) sel.value = currentVal;
+}
+
+function updateInviteLink() {
+  const inviteLinkInput = document.getElementById('config-invite-link');
+  const deptSel = document.getElementById('config-invite-dept');
+  if (!inviteLinkInput) return;
+  let url = window.location.origin + window.location.pathname + '?invite=admin_token_123';
+  if (deptSel && deptSel.value) url += '&dept=' + encodeURIComponent(deptSel.value);
+  inviteLinkInput.value = url;
+}
+
+function copyInviteLink() {
+  const inviteLinkInput = document.getElementById('config-invite-link');
+  if (!inviteLinkInput) return;
+  
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(inviteLinkInput.value).then(() => {
+      alert('✅ Invite link copied to clipboard!');
+    });
+  } else {
+    inviteLinkInput.select();
+    try {
+      document.execCommand('copy');
+      alert('✅ Invite link copied to clipboard!');
+    } catch (err) {
+      alert('❌ Failed to copy link.');
+    }
+  }
+}
+
+function saveConfiguration() {
+  saveSettings({
+    chat_img_quality: document.getElementById('chat-img-quality').value,
+    low_stock_threshold: document.getElementById('config-low-stock').value || 10,
+    disable_registration: document.getElementById('config-registration').value
+  });
+  applyRegistrationToggle(); // Apply instantly
+  alert('Configurations saved!');
+}
+
+async function clearGlobalChatHistory() {
+  if (!requireAdmin()) return;
+  const ok = await themedDeleteConfirm('⚠️ Delete ALL chat messages and attachments for everyone?', { confirmLabel: 'Purge Chat', confirmButtonClass: 'btn-danger' });
+  if (!ok) return;
+  try {
+    await fetch('/api/chat', { method: 'DELETE' });
+    if (typeof loadChatHistory === 'function') {
+      chatHistoryLoaded = false;
+      document.getElementById('chat-messages').innerHTML = '';
+      loadChatHistory();
+    }
+    alert('Chat history has been purged.');
+  } catch (err) {
+    alert('Failed to clear chat.');
+  }
+}
+
+async function executeFactoryReset() {
+  if (!requireAdmin()) return;
+  const confirm1 = await themedDeleteConfirm('⚠️ DANGER: This will permanently delete ALL Items, Transactions, Departments, and Employees. Are you sure?');
+  if (!confirm1) return;
+  const confirm2 = await themedDeleteConfirm('⚠️ FINAL WARNING: This action CANNOT be undone.', { confirmLabel: 'FACTORY RESET', confirmButtonClass: 'btn-danger' });
+  if (!confirm2) return;
+
+  // Clear local tables (auto-syncs to KV Store)
+  setData('items', []);
+  setData('transactions', []);
+  setData('departments', []);
+  setData('employees', []);
+  
+  try { await fetch('/api/chat', { method: 'DELETE' }); } catch (e) {}
+  
+  alert('Factory Reset Complete. Reloading application...');
+  window.location.reload();
+}
+
+function applyRegistrationToggle() {
+  const s = getSettings();
+  const actions = document.querySelector('.login-overlay-actions');
+  const urlParams = new URLSearchParams(window.location.search);
+  const hasInviteToken = urlParams.get('invite') === 'admin_token_123';
+  const inviteDept = urlParams.get('dept');
+
+  if (actions) {
+    // Show if registration is enabled OR if user accesses the app via the invite link
+    actions.style.display = (s.disable_registration !== 'true' || hasInviteToken) ? 'flex' : 'none';
+  }
+  
+  const deptInput = document.getElementById('create-department-id');
+  if (deptInput && inviteDept) {
+    deptInput.value = inviteDept;
+  }
+}
+
 
 /* ─────────────────────────────────────────────────────
    BOOTSTRAP — Run on page load
@@ -1140,6 +1278,7 @@ async function bootstrapApp() {
   initAccounts();        // seed default login accounts (defined in auth.js)
   initSeedData();        // seed default inventory data (defined in db.js)
   initThemeController(); // apply saved/system theme and setup theme listener
+  applyRegistrationToggle(); // Hide create account link if disabled in config
   bindSettingsDeleteHandler(); // ensure all trash buttons work via delegated click handling
   checkAuth();           // show login screen if not logged in (defined in auth.js)
 }

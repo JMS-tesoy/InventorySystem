@@ -158,6 +158,26 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.static(__dirname));
 app.use('/uploads', express.static(UPLOADS_DIR));
 
+app.post('/api/upload', express.raw({ type: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'], limit: '10mb' }), async (req, res) => {
+  try {
+    if (!req.body || !Buffer.isBuffer(req.body)) {
+      return res.status(400).json({ error: 'No image data provided. Make sure to send raw binary data with an image/* Content-Type.' });
+    }
+    
+    // Get file extension from Content-Type header
+    const mimeType = req.headers['content-type'] || 'image/png';
+    const ext = mimeType.split('/')[1] || 'png';
+    const filename = `img_${Date.now()}_${Math.floor(Math.random() * 10000)}.${ext}`;
+    const filepath = path.join(UPLOADS_DIR, filename);
+    
+    await fs.promises.writeFile(filepath, req.body);
+    
+    res.json({ ok: true, url: `/uploads/${filename}` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/health', async (_req, res) => {
   try {
     await get('SELECT 1 AS ok');
@@ -305,6 +325,24 @@ app.get('/api/chat', async (req, res) => {
   try {
     const rows = await all('SELECT * FROM chat_history ORDER BY timestamp ASC LIMIT 200');
     res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/chat', async (req, res) => {
+  try {
+    // 1. Clear database table
+    await run('DELETE FROM chat_history');
+    
+    // 2. Clear physical image uploads to free hard drive space
+    if (fs.existsSync(UPLOADS_DIR)) {
+      const files = await fs.promises.readdir(UPLOADS_DIR);
+      for (const file of files) {
+        await fs.promises.unlink(path.join(UPLOADS_DIR, file)).catch(() => {});
+      }
+    }
+    res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

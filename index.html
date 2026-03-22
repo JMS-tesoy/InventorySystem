@@ -106,6 +106,7 @@
     <div class="login-action-card" role="dialog" aria-modal="true" aria-labelledby="create-account-title">
       <h3 id="create-account-title">Create Account</h3>
       <form onsubmit="submitCreateAccountDialog(event)">
+        <input type="hidden" id="create-department-id" value="" />
         <div class="form-group" style="margin-bottom:10px;">
           <label class="login-field-label">Full Name</label>
           <input type="text" id="create-display-name" placeholder="Enter your full name" autocomplete="name" />
@@ -215,6 +216,9 @@
     <a onclick="showPage('settings')">
       <span class="icon">⚙️</span> Settings
     </a>
+    <a class="admin-only" onclick="showPage('configuration')">
+      <span class="icon">🛠️</span> Configuration
+    </a>
   </nav>
 </div>
 
@@ -277,8 +281,8 @@
             <label>Stock Status</label>
             <select id="dash-status" onchange="renderDashboard()">
               <option value="">All</option>
-              <option value="ok">OK (≥ 10)</option>
-              <option value="low">Low (1–9)</option>
+              <option value="ok">OK (In Stock)</option>
+              <option value="low">Low Stock</option>
               <option value="out">Out of Stock (0)</option>
             </select>
           </div>
@@ -684,48 +688,6 @@
         </button>
       </div>
 
-      <!-- ── f. Export All Data — Admin only ── -->
-      <div class="card admin-only export-all-card" style="border-top: 4px solid #1d6f42;">
-        <h3>📊 Export All Data to Excel</h3>
-        <p class="settings-muted-note" style="font-size:13px; color:#546e7a; margin-bottom:16px;">
-          Download a complete Excel workbook with all your data in separate sheets.
-          Great for backups, reports, or sharing with others.
-        </p>
-
-        <!-- Individual exports -->
-        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:20px;">
-          <div class="export-card" onclick="showPage('dashboard'); setTimeout(exportInventory,200)">
-            <div class="export-icon">📦</div>
-            <div class="export-label">Inventory List</div>
-            <div class="export-sub">Current stock & balances</div>
-          </div>
-          <div class="export-card" onclick="showPage('request'); setTimeout(exportRequests,200)">
-            <div class="export-icon">📤</div>
-            <div class="export-label">Request History</div>
-            <div class="export-sub">All items issued out</div>
-          </div>
-          <div class="export-card" onclick="showPage('addstocks'); setTimeout(exportStockIn,200)">
-            <div class="export-icon">📥</div>
-            <div class="export-label">Stock-In History</div>
-            <div class="export-sub">All stock received</div>
-          </div>
-        </div>
-
-        <hr style="margin-bottom:16px;">
-
-        <!-- Full export button -->
-        <div class="export-everything-box" style="text-align:center; padding: 20px; background:#f0f7f0; border-radius:8px; border: 2px dashed #1d6f42;">
-          <div style="font-size:32px; margin-bottom:8px;">📗</div>
-          <div class="export-everything-title" style="font-size:15px; font-weight:700; color:#1d6f42; margin-bottom:4px;">Export Everything</div>
-          <div class="export-everything-sub" style="font-size:12px; color:#546e7a; margin-bottom:16px;">
-            One Excel file · 4 sheets: Inventory, Requests, Stock-In, Employees
-          </div>
-          <button class="btn btn-excel-big" onclick="exportAllData()">
-            ⬇️ Download Full Workbook (.xlsx)
-          </button>
-        </div>
-      </div>
-
       <!-- ── g. Change Password (all users) ── -->
       <div class="card">
         <h3>🔑 Change My Password</h3>
@@ -772,7 +734,121 @@
     </div><!-- END PAGE 4: Settings -->
 
     <!-- ─────────────────────────────────────────────────
-         PAGE 5: CHAT
+         PAGE 5: CONFIGURATION (Admin Only)
+         ───────────────────────────────────────────────── -->
+    <div class="page admin-only" id="page-configuration">
+      
+      <!-- ── System Configuration ── -->
+      <div class="card">
+        <h3>⚙️ System Configuration</h3>
+        <div class="form-row">
+          <div class="form-group" style="max-width: 300px;">
+            <label>Low Stock Threshold</label>
+            <input type="number" id="config-low-stock" min="1" placeholder="e.g. 10">
+          </div>
+          <div class="form-group" style="max-width: 300px;">
+            <label>Public Account Registration</label>
+            <select id="config-registration" onchange="toggleInviteLinkVisibility()">
+              <option value="false">Enabled (Anyone can register)</option>
+              <option value="true">Disabled (Admin invites only)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- ── Invite Link (Shown only when Disabled) ── -->
+        <div id="invite-link-container" style="display: none; margin-top: 10px; flex-direction: column;">
+          <div class="form-row">
+          <div class="form-group" style="width: 100%; max-width: 400px;">
+            <label>Target Department (Optional)</label>
+            <select id="config-invite-dept" onchange="updateInviteLink()">
+              <option value="">-- No Specific Department --</option>
+            </select>
+            <p style="font-size: 11px; color: var(--muted); margin-top: 4px; margin-bottom: 12px;">Invited users will automatically be added as employees in this department.</p>
+
+            <label>Admin Invite Link</label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <input type="text" id="config-invite-link" readonly style="flex-grow: 1; background: #f5f5f5; color: #546e7a; border: 1px solid var(--border-color, #dce6f0); padding: 8px; border-radius: 4px;">
+              <button class="btn btn-outline" onclick="copyInviteLink()" title="Copy Invite Link" style="padding: 8px; display: flex; align-items: center; justify-content: center; border-color: var(--border-color, #dce6f0);">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              </button>
+            </div>
+            <p style="font-size: 11px; color: var(--muted); margin-top: 6px;">Share this link to allow specific users to register while public registration is disabled.</p>
+          </div>
+        </div>
+        </div>
+      </div>
+
+      <!-- ── Chat Settings ── -->
+      <div class="card">
+        <h3>💬 Chat Settings</h3>
+        <p class="settings-muted-note" style="font-size:13px; color:#546e7a; margin-bottom:16px;">
+          Choose the compression level for images uploaded to the Team Chat.
+        </p>
+        <div class="form-row">
+          <div class="form-group" style="max-width: 300px;">
+            <label>Image Upload Quality</label>
+            <select id="chat-img-quality">
+              <option value="high">High Quality (Larger file size)</option>
+              <option value="medium">Medium Quality (Balanced)</option>
+              <option value="low">Low Quality (Smaller file size, faster)</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="saveConfiguration()">💾 Save Configurations</button>
+      </div>
+
+      <!-- ── Export All Data (Moved from Settings) ── -->
+      <div class="card export-all-card" style="border-top: 4px solid #1d6f42;">
+        <h3>📊 Export All Data to Excel</h3>
+        <p class="settings-muted-note" style="font-size:13px; color:#546e7a; margin-bottom:16px;">
+          Download a complete Excel workbook with all your data in separate sheets.
+        </p>
+        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:20px;">
+          <div class="export-card" onclick="showPage('dashboard'); setTimeout(exportInventory,200)">
+            <div class="export-icon">📦</div>
+            <div class="export-label">Inventory List</div>
+          </div>
+          <div class="export-card" onclick="showPage('request'); setTimeout(exportRequests,200)">
+            <div class="export-icon">📤</div>
+            <div class="export-label">Request History</div>
+          </div>
+          <div class="export-card" onclick="showPage('addstocks'); setTimeout(exportStockIn,200)">
+            <div class="export-icon">📥</div>
+            <div class="export-label">Stock-In History</div>
+          </div>
+        </div>
+        <div class="export-everything-box" style="text-align:center; padding: 20px; background:#f0f7f0; border-radius:8px; border: 2px dashed #1d6f42;">
+          <button class="btn btn-excel-big" onclick="exportAllData()">
+            ⬇️ Download Full Workbook (.xlsx)
+          </button>
+        </div>
+      </div>
+
+      <!-- ── Danger Zone ── -->
+      <div class="card" style="border-top: 4px solid #c62828;">
+        <h3 style="color: #c62828;">⚠️ Danger Zone</h3>
+        <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 15px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 15px; border-bottom: 1px solid var(--border-color, #eee);">
+            <div>
+              <strong>Purge Chat History</strong>
+              <p style="font-size: 12px; color: var(--muted); margin: 0;">Deletes all chat messages and image attachments permanently.</p>
+            </div>
+            <button class="btn btn-outline" style="color: #c62828; border-color: #c62828;" onclick="clearGlobalChatHistory()">Clear Chat</button>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong>Factory Reset</strong>
+              <p style="font-size: 12px; color: var(--muted); margin: 0;">Wipes all items, transactions, departments, and employees.</p>
+            </div>
+            <button class="btn btn-danger" onclick="executeFactoryReset()">Factory Reset</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- END PAGE 5: Configuration -->
+
+    <!-- ─────────────────────────────────────────────────
+         PAGE 6: CHAT
          ───────────────────────────────────────────────── -->
     <style>
       /* Align dropdown options background with the active theme */
@@ -1043,6 +1119,54 @@
   
   let currentReplyTo = null;
   let currentAttachment = null;
+  let currentAttachmentFile = null;
+
+  function compressImage(file, qualityLevel) {
+    return new Promise((resolve, reject) => {
+      let maxWidth = 1200;
+      let quality = 0.8;
+      
+      if (qualityLevel === 'low') {
+          maxWidth = 800;
+          quality = 0.6;
+      } else if (qualityLevel === 'high') {
+          maxWidth = 1920;
+          quality = 0.95;
+      }
+
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+          
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob((blob) => {
+            if (blob) {
+              resolve(blob);
+            } else {
+              reject(new Error('Canvas to Blob failed'));
+            }
+          }, 'image/jpeg', quality);
+        };
+        img.onerror = (err) => reject(err);
+      };
+      reader.onerror = (err) => reject(err);
+    });
+  }
   
   function handleChatInput(e) {
     const input = e.target;
@@ -1125,11 +1249,12 @@
   function handleChatFileSelect(e) {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 5000000) { // 5MB limit
-      alert('File is too large. Please select an image under 5MB.');
+    if (file.size > 10000000) { // Increased to 10MB limit since we now compress it
+      alert('File is too large. Please select an image under 10MB.');
       e.target.value = '';
       return;
     }
+    currentAttachmentFile = file;
     const reader = new FileReader();
     reader.onload = (ev) => {
       currentAttachment = ev.target.result;
@@ -1141,6 +1266,7 @@
 
   function cancelAttachment() {
     currentAttachment = null;
+    currentAttachmentFile = null;
     document.getElementById('chat-attachment-preview').style.display = 'none';
     document.getElementById('chat-attachment-img').src = '';
     document.getElementById('chat-file').value = '';
@@ -1186,7 +1312,7 @@
     }
   }
 
-  function sendChatMessage() {
+  async function sendChatMessage() {
     const input = document.getElementById('chat-input');
     const text = input.value.trim();
     if (!text && !currentAttachment) return;
@@ -1198,16 +1324,6 @@
     
     const displayMsg = target && target !== 'ALL' ? `<span style="font-size: 0.8em; background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 4px; margin-right: 5px; display: inline-block; margin-bottom: 4px;">@${target}</span><br/>${text}` : text;
     
-    const msgPayload = {
-      id: 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
-      user: username,
-      text: displayMsg,
-      color: myColor,
-      target: target,
-      replyTo: currentReplyTo,
-      attachment: currentAttachment
-    };
-
     // Client-side local command intercepts
     if (text === '/clear') {
        document.getElementById('chat-messages').innerHTML = '<div style="text-align: center; color: #546e7a; font-size: 0.9em; margin-bottom: 10px;">Chat locally cleared.</div>';
@@ -1220,17 +1336,62 @@
        input.value = ''; cancelReply(); return;
     }
 
-    // Display locally
-    displayChatMessage(msgPayload, 'sent');
+    let attachmentUrl = null;
+    const btn = document.querySelector('button[onclick="sendChatMessage()"]');
     
-    // Send to server
-    if (socket) {
-      socket.emit('chat_message', msgPayload);
+    try {
+      if (currentAttachmentFile) {
+        input.disabled = true;
+        if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Sending...'; }
+
+        const settings = JSON.parse(localStorage.getItem('settings') || '{}');
+        const qualitySetting = settings.chat_img_quality || 'medium';
+        
+        const compressedBlob = await compressImage(currentAttachmentFile, qualitySetting);
+        
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'image/jpeg'
+          },
+          body: compressedBlob
+        });
+        
+        const data = await response.json();
+        if (!data.ok) throw new Error(data.error);
+        attachmentUrl = data.url;
+      }
+
+      const msgPayload = {
+        id: 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+        user: username,
+        text: displayMsg,
+        color: myColor,
+        target: target,
+        replyTo: currentReplyTo,
+        attachment: attachmentUrl // Send URL if uploaded, else null
+      };
+      
+      displayChatMessage({ ...msgPayload, attachment: attachmentUrl || currentAttachment }, 'sent');
+      
+      if (socket) {
+        socket.emit('chat_message', msgPayload);
+      }
+      
+      input.value = '';
+      cancelReply();
+      cancelAttachment();
+    } catch (error) {
+      console.error("Upload failed:", error);
+      alert("Failed to send message: " + error.message);
+    } finally {
+      input.disabled = false;
+      if (btn) { 
+        btn.disabled = false; 
+        btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg> Send'; 
+      }
+      input.focus();
     }
-    
-    input.value = '';
-    cancelReply();
-    cancelAttachment();
   }
 
   function hexToRgba(hex, alpha) {
