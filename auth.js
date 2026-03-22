@@ -24,24 +24,66 @@
    Stored under localStorage key: 'accounts'
    ───────────────────────────────────────────────────── */
 function initAccounts() {
-  if (localStorage.getItem('accounts')) return; // already seeded
+  const existing = localStorage.getItem('accounts');
+  if (existing) {
+    try {
+      const accounts = JSON.parse(existing);
+      if (Array.isArray(accounts)) {
+        let changed = false;
+        const hydrated = accounts.map((account) => {
+          const username = String(account.username || '').toLowerCase();
+          const copy = { ...account };
+          if (!copy.email && username === 'admin') {
+            copy.email = 'admin@inventory.local';
+            changed = true;
+          }
+          if (!copy.phone && username === 'admin') {
+            copy.phone = '09170000001';
+            changed = true;
+          }
+          if (!copy.email && username === 'user') {
+            copy.email = 'user@inventory.local';
+            changed = true;
+          }
+          if (!copy.phone && username === 'user') {
+            copy.phone = '09170000002';
+            changed = true;
+          }
+          return copy;
+        });
+        if (changed) saveAuthKey('accounts', hydrated);
+      }
+    } catch (_) {
+      // ignore malformed storage and continue with seeded defaults below
+    }
+    return;
+  }
+
   const accounts = [
     {
       id: 1,
       username:    'admin',
       password:    'Admin@1234',
       role:        'admin',
-      displayName: 'Administrator'
+      displayName: 'Administrator',
+      email:       'admin@inventory.local',
+      phone:       '09170000001'
     },
     {
       id: 2,
       username:    'user',
       password:    'User@1234',
       role:        'user',
-      displayName: 'Staff User'
+      displayName: 'Staff User',
+      email:       'user@inventory.local',
+      phone:       '09170000002'
     }
   ];
   saveAuthKey('accounts', accounts);
+}
+
+function normalizePhone(phoneValue) {
+  return String(phoneValue || '').replace(/\D/g, '');
 }
 
 function saveAuthKey(key, value) {
@@ -158,6 +200,249 @@ function loginKeydown(e) {
   if (e.key === 'Enter') doLogin();
 }
 
+function setLoginMessage(message, isError = true) {
+  const errorEl = document.getElementById('login-error');
+  if (!errorEl) return;
+  errorEl.textContent = message;
+  errorEl.style.color = isError ? '#c62828' : '#2e7d32';
+}
+
+function setLoginActionMessage(elementId, message, isError = true) {
+  const msgEl = document.getElementById(elementId);
+  if (!msgEl) return;
+  msgEl.textContent = message;
+  msgEl.style.color = isError ? '#c62828' : '#2e7d32';
+}
+
+function openLoginActionDialog(dialogId, focusFieldId) {
+  const dialog = document.getElementById(dialogId);
+  const overlay = document.getElementById('login-overlay');
+  if (!dialog) return;
+
+  document.querySelectorAll('.login-action-dialog.is-open').forEach((node) => {
+    if (node.id !== dialogId) {
+      node.classList.remove('is-open');
+      node.setAttribute('aria-hidden', 'true');
+    }
+  });
+
+  dialog.classList.add('is-open');
+  dialog.setAttribute('aria-hidden', 'false');
+  if (overlay) overlay.classList.add('has-action-dialog');
+
+  if (focusFieldId) {
+    setTimeout(() => {
+      const field = document.getElementById(focusFieldId);
+      if (field) field.focus();
+    }, 40);
+  }
+}
+
+function closeLoginActionDialog(dialogId) {
+  const dialog = document.getElementById(dialogId);
+  const overlay = document.getElementById('login-overlay');
+  if (!dialog) return;
+  dialog.classList.remove('is-open');
+  dialog.setAttribute('aria-hidden', 'true');
+
+  const stillOpen = document.querySelector('.login-action-dialog.is-open');
+  if (!stillOpen && overlay) {
+    overlay.classList.remove('has-action-dialog');
+  }
+}
+
+function createAccountFromLogin() {
+  setLoginActionMessage('create-account-error', '', true);
+  openLoginActionDialog('create-account-dialog', 'create-display-name');
+}
+
+function forgotPasswordFromLogin() {
+  setLoginActionMessage('forgot-password-error', '', true);
+  openLoginActionDialog('forgot-password-dialog', 'forgot-email');
+}
+
+function submitCreateAccountDialog(event) {
+  event.preventDefault();
+
+  const cleanDisplayName = (document.getElementById('create-display-name').value || '').trim();
+  const username = (document.getElementById('create-username').value || '').trim().toLowerCase();
+  const email = (document.getElementById('create-email').value || '').trim().toLowerCase();
+  const phone = (document.getElementById('create-phone').value || '').trim();
+  const normalizedPhone = normalizePhone(phone);
+  const password = document.getElementById('create-password').value || '';
+  const confirmPassword = document.getElementById('create-confirm-password').value || '';
+
+  setLoginActionMessage('create-account-error', '', true);
+
+  if (!cleanDisplayName) {
+    setLoginActionMessage('create-account-error', 'Please provide a valid full name.');
+    return;
+  }
+
+  if (!/^[a-z0-9._-]{3,24}$/.test(username)) {
+    setLoginActionMessage('create-account-error', 'Username must be 3-24 chars using letters, numbers, ., _, or -.');
+    return;
+  }
+
+  if (!/^\S+@\S+\.\S+$/.test(email)) {
+    setLoginActionMessage('create-account-error', 'Please enter a valid email address.');
+    return;
+  }
+
+  if (normalizedPhone.length < 7) {
+    setLoginActionMessage('create-account-error', 'Please enter a valid phone number.');
+    return;
+  }
+
+  const accounts = JSON.parse(localStorage.getItem('accounts') || '[]');
+  const exists = accounts.some(a => (a.username || '').toLowerCase() === username);
+  if (exists) {
+    setLoginActionMessage('create-account-error', 'That username is already taken.');
+    return;
+  }
+
+  const emailExists = accounts.some(a => (a.email || '').toLowerCase() === email);
+  if (emailExists) {
+    setLoginActionMessage('create-account-error', 'That email is already in use.');
+    return;
+  }
+
+  const phoneExists = accounts.some(a => normalizePhone(a.phone) === normalizedPhone);
+  if (phoneExists) {
+    setLoginActionMessage('create-account-error', 'That phone number is already in use.');
+    return;
+  }
+
+  if (password.length < 6) {
+    setLoginActionMessage('create-account-error', 'Password must be at least 6 characters.');
+    return;
+  }
+
+  if (password !== confirmPassword) {
+    setLoginActionMessage('create-account-error', 'Password confirmation did not match.');
+    return;
+  }
+
+  const nextId = accounts.reduce((max, account) => Math.max(max, Number(account.id) || 0), 0) + 1;
+  accounts.push({
+    id: nextId,
+    username,
+    password,
+    role: 'user',
+    displayName: cleanDisplayName,
+    email,
+    phone
+  });
+  saveAuthKey('accounts', accounts);
+
+  const userField = document.getElementById('login-username');
+  const passField = document.getElementById('login-password');
+  if (userField) userField.value = username;
+  if (passField) passField.value = password;
+
+  document.getElementById('create-display-name').value = '';
+  document.getElementById('create-username').value = '';
+  document.getElementById('create-email').value = '';
+  document.getElementById('create-phone').value = '';
+  document.getElementById('create-password').value = '';
+  document.getElementById('create-confirm-password').value = '';
+  closeLoginActionDialog('create-account-dialog');
+  setLoginMessage('✅ Account created. You can log in now.', false);
+}
+
+function submitForgotPasswordDialog(event) {
+  event.preventDefault();
+
+  const email = (document.getElementById('forgot-email').value || '').trim().toLowerCase();
+  const phone = (document.getElementById('forgot-phone').value || '').trim();
+  const normalizedPhone = normalizePhone(phone);
+  const newPassword = document.getElementById('forgot-new-password').value || '';
+  const confirmPassword = document.getElementById('forgot-confirm-password').value || '';
+
+  setLoginActionMessage('forgot-password-error', '', true);
+
+  if (!/^\S+@\S+\.\S+$/.test(email)) {
+    setLoginActionMessage('forgot-password-error', 'Please enter a valid email address.');
+    return;
+  }
+
+  if (normalizedPhone.length < 7) {
+    setLoginActionMessage('forgot-password-error', 'Please enter a valid phone number.');
+    return;
+  }
+
+  const accounts = JSON.parse(localStorage.getItem('accounts') || '[]');
+  const account = accounts.find(
+    (a) => (a.email || '').toLowerCase() === email && normalizePhone(a.phone) === normalizedPhone
+  );
+  if (!account) {
+    setLoginActionMessage('forgot-password-error', 'No account matched that email and phone number.');
+    return;
+  }
+
+  if (newPassword.length < 6) {
+    setLoginActionMessage('forgot-password-error', 'New password must be at least 6 characters.');
+    return;
+  }
+
+  if (newPassword !== confirmPassword) {
+    setLoginActionMessage('forgot-password-error', 'Password confirmation did not match.');
+    return;
+  }
+
+  account.password = newPassword;
+  saveAuthKey('accounts', accounts);
+
+  const userField = document.getElementById('login-username');
+  const passField = document.getElementById('login-password');
+  if (userField) userField.value = account.username;
+  if (passField) passField.value = '';
+
+  document.getElementById('forgot-email').value = '';
+  document.getElementById('forgot-phone').value = '';
+  document.getElementById('forgot-new-password').value = '';
+  document.getElementById('forgot-confirm-password').value = '';
+  closeLoginActionDialog('forgot-password-dialog');
+  setLoginMessage('✅ Password reset complete. Please log in.', false);
+}
+
+let loginTiltBound = false;
+
+function bindLoginCardTilt() {
+  if (loginTiltBound) return;
+
+  const card = document.getElementById('login-card');
+  if (!card) return;
+
+  const resetTilt = () => {
+    card.style.setProperty('--tilt-x', '0deg');
+    card.style.setProperty('--tilt-y', '0deg');
+    card.classList.remove('is-tilting');
+  };
+
+  const onMove = (event) => {
+    if (card.classList.contains('shake')) return;
+
+    const bounds = card.getBoundingClientRect();
+    const px = (event.clientX - bounds.left) / bounds.width;
+    const py = (event.clientY - bounds.top) / bounds.height;
+
+    const rotateY = ((px - 0.5) * 14).toFixed(2);
+    const rotateX = ((0.5 - py) * 12).toFixed(2);
+
+    card.style.setProperty('--tilt-x', `${rotateX}deg`);
+    card.style.setProperty('--tilt-y', `${rotateY}deg`);
+    card.classList.add('is-tilting');
+  };
+
+  card.addEventListener('mousemove', onMove);
+  card.addEventListener('mouseleave', resetTilt);
+  card.addEventListener('blur', resetTilt, true);
+
+  card.resetTilt = resetTilt;
+  loginTiltBound = true;
+}
+
 
 /* ─────────────────────────────────────────────────────
    LOGOUT
@@ -194,10 +479,20 @@ function showLoginScreen() {
   document.getElementById('sidebar').style.visibility    = 'hidden';
   document.getElementById('main').style.visibility      = 'hidden';
   document.getElementById('hamburger').style.visibility = 'hidden';
+  bindLoginCardTilt();
   setTimeout(() => document.getElementById('login-username').focus(), 100);
 }
 
 function hideLoginScreen() {
+  document.querySelectorAll('.login-action-dialog.is-open').forEach((node) => {
+    node.classList.remove('is-open');
+    node.setAttribute('aria-hidden', 'true');
+  });
+  const overlay = document.getElementById('login-overlay');
+  if (overlay) overlay.classList.remove('has-action-dialog');
+
+  const card = document.getElementById('login-card');
+  if (card && typeof card.resetTilt === 'function') card.resetTilt();
   document.getElementById('login-overlay').style.display = 'none';
   document.getElementById('sidebar').style.visibility    = 'visible';
   document.getElementById('main').style.visibility      = 'visible';
@@ -357,12 +652,18 @@ function populateAdminResetDropdown() {
 function toggleLoginPassword() {
   const inp = document.getElementById('login-password');
   const btn = document.getElementById('toggle-pwd-btn');
+  const eyeIcon = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" focusable="false" aria-hidden="true"><path d="M12 5c5.3 0 9.3 4.2 10 6.8a1 1 0 0 1 0 .4C21.3 14.8 17.3 19 12 19S2.7 14.8 2 12.2a1 1 0 0 1 0-.4C2.7 9.2 6.7 5 12 5zm0 2c-3.9 0-7 2.9-7.9 5 .9 2.1 4 5 7.9 5s7-2.9 7.9-5c-.9-2.1-4-5-7.9-5zm0 2.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5z"/></svg>';
+  const eyeOffIcon = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" focusable="false" aria-hidden="true"><path d="M3.3 4.7a1 1 0 1 1 1.4-1.4l14.6 14.6a1 1 0 1 1-1.4 1.4l-2.1-2.1A11.8 11.8 0 0 1 12 19C6.7 19 2.7 14.8 2 12.2a1 1 0 0 1 0-.4c.4-1.6 2.1-4.1 4.8-5.8L3.3 4.7zM8.5 7.4C6.4 8.7 5 10.6 4.1 12c.9 2.1 4 5 7.9 5 1.2 0 2.3-.3 3.4-.7l-2-2A3.5 3.5 0 0 1 9.7 10.6l-1.2-1.2zm10.7 4.6c-.9-2.1-4-5-7.9-5-.7 0-1.4.1-2 .2L7.8 5.7A11.6 11.6 0 0 1 12 5c5.3 0 9.3 4.2 10 6.8a1 1 0 0 1 0 .4 11.2 11.2 0 0 1-3.4 4.9l-1.4-1.4c.9-.9 1.6-2 2-2.7z"/></svg>';
   if (inp.type === 'password') {
     inp.type = 'text';
-    btn.textContent = '🙈';
+    btn.innerHTML = eyeOffIcon;
+    btn.setAttribute('aria-label', 'Hide password');
+    btn.setAttribute('title', 'Hide password');
   } else {
     inp.type = 'password';
-    btn.textContent = '👁️';
+    btn.innerHTML = eyeIcon;
+    btn.setAttribute('aria-label', 'Show password');
+    btn.setAttribute('title', 'Show password');
   }
 }
 

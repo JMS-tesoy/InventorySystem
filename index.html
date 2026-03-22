@@ -59,20 +59,110 @@
       <label class="login-field-label" style="font-size:12px;font-weight:600;color:#546e7a;">PASSWORD</label>
       <div style="position:relative;">
         <input type="password" id="login-password" placeholder="Enter password" onkeydown="loginKeydown(event)" autocomplete="current-password" style="padding-right:42px;">
-        <button id="toggle-pwd-btn" onclick="toggleLoginPassword()" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;padding:0;">👁️</button>
+        <button
+          id="toggle-pwd-btn"
+          type="button"
+          aria-label="Show password"
+          title="Show password"
+          onclick="toggleLoginPassword()"
+          style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:0;"
+        >
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" focusable="false" aria-hidden="true">
+            <path d="M12 5c5.3 0 9.3 4.2 10 6.8a1 1 0 0 1 0 .4C21.3 14.8 17.3 19 12 19S2.7 14.8 2 12.2a1 1 0 0 1 0-.4C2.7 9.2 6.7 5 12 5zm0 2c-3.9 0-7 2.9-7.9 5 .9 2.1 4 5 7.9 5s7-2.9 7.9-5c-.9-2.1-4-5-7.9-5zm0 2.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5z"/>
+          </svg>
+        </button>
+      </div>
+      <div class="login-forgot-wrap">
+        <button type="button" class="login-field-link" onclick="forgotPasswordFromLogin()">Forgot password</button>
       </div>
     </div>
 
     <div id="login-error" style="font-size:12px;color:#c62828;min-height:18px;margin-bottom:8px;"></div>
 
-    <button class="btn btn-primary" onclick="doLogin()" style="width:100%;padding:11px;">
-      🔐 Login
+    <button class="btn btn-primary login-btn" onclick="doLogin()" style="width:100%;padding:11px;">
+      <span class="login-btn-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" focusable="false">
+          <path d="M7 10V8a5 5 0 0 1 10 0v2h1a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h1zm2 0h6V8a3 3 0 0 0-6 0v2zm3 4a2 2 0 0 1 1 3.732V20h-2v-2.268A2 2 0 0 1 12 14z"/>
+        </svg>
+      </span>
+      <span>Login</span>
     </button>
 
     <div class="login-accounts-hint">
       <strong>Default Accounts:</strong><br>
       Admin: <code>admin</code> / <code>Admin@1234</code><br>
       User: <code>user</code> / <code>User@1234</code>
+    </div>
+  </div>
+
+  <div class="login-overlay-actions" aria-label="Login assistance">
+    <span class="login-overlay-note">Need help?</span>
+    <button type="button" class="login-overlay-link" onclick="createAccountFromLogin()">Create account</button>
+  </div>
+
+  <div id="create-account-dialog" class="login-action-dialog" aria-hidden="true">
+    <div class="login-action-card" role="dialog" aria-modal="true" aria-labelledby="create-account-title">
+      <h3 id="create-account-title">Create Account</h3>
+      <form onsubmit="submitCreateAccountDialog(event)">
+        <div class="form-group" style="margin-bottom:10px;">
+          <label class="login-field-label">Full Name</label>
+          <input type="text" id="create-display-name" placeholder="Enter your full name" autocomplete="name" />
+        </div>
+        <div class="form-group" style="margin-bottom:10px;">
+          <label class="login-field-label">Username</label>
+          <input type="text" id="create-username" placeholder="e.g. jms.dev" autocomplete="username" />
+        </div>
+        <div class="form-group" style="margin-bottom:10px;">
+          <label class="login-field-label">Email</label>
+          <input type="email" id="create-email" placeholder="Enter your email" autocomplete="email" />
+        </div>
+        <div class="form-group" style="margin-bottom:10px;">
+          <label class="login-field-label">Phone Number</label>
+          <input type="tel" id="create-phone" placeholder="Enter your phone number" autocomplete="tel" />
+        </div>
+        <div class="form-group" style="margin-bottom:10px;">
+          <label class="login-field-label">Password</label>
+          <input type="password" id="create-password" placeholder="Minimum 6 characters" autocomplete="new-password" />
+        </div>
+        <div class="form-group" style="margin-bottom:6px;">
+          <label class="login-field-label">Confirm Password</label>
+          <input type="password" id="create-confirm-password" placeholder="Re-enter password" autocomplete="new-password" />
+        </div>
+        <div id="create-account-error" class="login-action-error" aria-live="polite"></div>
+        <div class="login-action-buttons">
+          <button type="button" class="btn btn-outline" onclick="closeLoginActionDialog('create-account-dialog')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="forgot-password-dialog" class="login-action-dialog" aria-hidden="true">
+    <div class="login-action-card" role="dialog" aria-modal="true" aria-labelledby="forgot-password-title">
+      <h3 id="forgot-password-title">Forgot Password</h3>
+      <form onsubmit="submitForgotPasswordDialog(event)">
+        <div class="form-group" style="margin-bottom:10px;">
+          <label class="login-field-label">Email</label>
+          <input type="email" id="forgot-email" placeholder="Enter your email" autocomplete="email" />
+        </div>
+        <div class="form-group" style="margin-bottom:10px;">
+          <label class="login-field-label">Phone Number</label>
+          <input type="tel" id="forgot-phone" placeholder="Enter your phone number" autocomplete="tel" />
+        </div>
+        <div class="form-group" style="margin-bottom:10px;">
+          <label class="login-field-label">New Password</label>
+          <input type="password" id="forgot-new-password" placeholder="Minimum 6 characters" autocomplete="new-password" />
+        </div>
+        <div class="form-group" style="margin-bottom:6px;">
+          <label class="login-field-label">Confirm New Password</label>
+          <input type="password" id="forgot-confirm-password" placeholder="Re-enter new password" autocomplete="new-password" />
+        </div>
+        <div id="forgot-password-error" class="login-action-error" aria-live="polite"></div>
+        <div class="login-action-buttons">
+          <button type="button" class="btn btn-outline" onclick="closeLoginActionDialog('forgot-password-dialog')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Reset</button>
+        </div>
+      </form>
     </div>
   </div>
 </div>
@@ -649,7 +739,7 @@
 <!-- ══════════════════════════════════════════════════
      FOOTER
      ══════════════════════════════════════════════════ -->
-<footer style="
+<footer title="JMS-Dev@2026" style="
   position: fixed;
   bottom: 0; left: 0;
   width: 100%;
@@ -661,7 +751,7 @@
   border-top: 1px solid #d0d0d0;
   z-index: 999;
 ">
-  Powered by <strong style="color:#bbd493;">JeRaMix</strong> • © 2026
+  JMS-Dev@2026
 </footer>
 
 

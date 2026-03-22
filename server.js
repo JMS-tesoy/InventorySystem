@@ -20,6 +20,96 @@ const STORAGE_KEYS = new Set([
 
 const db = new sqlite3.Database(DB_PATH);
 
+function normalizeAccountPayload(account) {
+  const value = account && typeof account === 'object' ? account : {};
+  const username = String(value.username || '').trim().toLowerCase();
+  return {
+    id: Number(value.id) || null,
+    username,
+    password: String(value.password || ''),
+    role: value.role === 'admin' ? 'admin' : 'user',
+    displayName: String(value.displayName || '').trim(),
+    email: String(value.email || '').trim().toLowerCase(),
+    phone: String(value.phone || '').trim()
+  };
+}
+
+async function getAccountsFromTable() {
+  const rows = await all(
+    `SELECT id, username, password, role, display_name, email, phone
+       FROM accounts
+      ORDER BY id ASC`
+  );
+
+  return rows.map((row) => ({
+    id: row.id,
+    username: row.username,
+    password: row.password,
+    role: row.role,
+    displayName: row.display_name || '',
+    email: row.email || '',
+    phone: row.phone || ''
+  }));
+}
+
+async function replaceAccountsInTable(accounts) {
+  const input = Array.isArray(accounts) ? accounts : [];
+  const sanitized = input.map(normalizeAccountPayload).filter((account) => account.username);
+
+  await run('BEGIN TRANSACTION');
+  try {
+    await run('DELETE FROM accounts');
+    for (const account of sanitized) {
+      await run(
+        `INSERT INTO accounts(id, username, password, role, display_name, email, phone, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+        [
+          account.id,
+          account.username,
+          account.password,
+          account.role,
+          account.displayName || null,
+          account.email || null,
+          account.phone || null
+        ]
+      );
+    }
+    await run('COMMIT');
+  } catch (err) {
+    await run('ROLLBACK');
+    throw err;
+  }
+}
+
+async function migrateAccountsFromKvStore() {
+  const countRow = await get('SELECT COUNT(*) AS count FROM accounts');
+  if (countRow && countRow.count > 0) return;
+
+  const legacy = await get('SELECT value FROM kv_store WHERE key = ?', ['accounts']);
+  if (!legacy) return;
+
+  let parsed = [];
+  try {
+    parsed = JSON.parse(legacy.value);
+  } catch (_err) {
+    parsed = [];
+  }
+
+  if (!Array.isArray(parsed) || !parsed.length) return;
+
+  await replaceAccountsInTable(parsed);
+  await run('DELETE FROM kv_store WHERE key = ?', ['accounts']);
+}
+
+function exec(sql) {
+  return new Promise((resolve, reject) => {
+    db.exec(sql, function onExec(err) {
+      if (err) return reject(err);
+      resolve(this);
+    });
+  });
+}
+
 function run(sql, params = []) {
   return new Promise((resolve, reject) => {
     db.run(sql, params, function onRun(err) {
@@ -49,7 +139,8 @@ function all(sql, params = []) {
 
 async function initDb() {
   const schema = fs.readFileSync(SCHEMA_PATH, 'utf8');
-  await run(schema);
+  await exec(schema);
+  await migrateAccountsFromKvStore();
 }
 
 app.use(express.json({ limit: '5mb' }));
@@ -66,7 +157,7 @@ app.get('/api/health', async (_req, res) => {
 
 app.get('/api/state', async (_req, res) => {
   try {
-    const rows = await all('SELECT key, value FROM kv_store');
+    const rows = await all("SELECT key, value FROM kv_store WHERE key != 'accounts'");
     const state = {};
     rows.forEach((row) => {
       try {
@@ -75,7 +166,11 @@ app.get('/api/state', async (_req, res) => {
         state[row.key] = row.value;
       }
     });
-    res.json({ state, hasData: rows.length > 0 });
+
+    const accounts = await getAccountsFromTable();
+    if (accounts.length) state.accounts = accounts;
+
+    res.json({ state, hasData: rows.length > 0 || accounts.length > 0 });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -97,6 +192,28 @@ app.post('/api/state/import', async (req, res) => {
     try {
       const keys = Object.keys(inputState).filter((key) => STORAGE_KEYS.has(key));
       for (const key of keys) {
+        if (key === 'accounts') {
+          const inputAccounts = Array.isArray(inputState[key]) ? inputState[key] : [];
+          const sanitized = inputAccounts.map(normalizeAccountPayload).filter((account) => account.username);
+          await run('DELETE FROM accounts');
+          for (const account of sanitized) {
+            await run(
+              `INSERT INTO accounts(id, username, password, role, display_name, email, phone, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+              [
+                account.id,
+                account.username,
+                account.password,
+                account.role,
+                account.displayName || null,
+                account.email || null,
+                account.phone || null
+              ]
+            );
+          }
+          continue;
+        }
+
         const value = JSON.stringify(inputState[key]);
         await run(
           'INSERT INTO kv_store(key, value, updated_at) VALUES (?, ?, datetime(\'now\'))',
@@ -122,6 +239,12 @@ app.get('/api/key/:key', async (req, res) => {
   }
 
   try {
+    if (key === 'accounts') {
+      const accounts = await getAccountsFromTable();
+      if (!accounts.length) return res.status(404).json({ error: 'Not found' });
+      return res.json({ key, value: accounts });
+    }
+
     const row = await get('SELECT value FROM kv_store WHERE key = ?', [key]);
     if (!row) return res.status(404).json({ error: 'Not found' });
     return res.json({ key, value: JSON.parse(row.value) });
@@ -141,6 +264,14 @@ app.put('/api/key/:key', async (req, res) => {
   }
 
   try {
+    if (key === 'accounts') {
+      if (!Array.isArray(req.body.value)) {
+        return res.status(400).json({ error: '"accounts" value must be an array.' });
+      }
+      await replaceAccountsInTable(req.body.value);
+      return res.json({ ok: true });
+    }
+
     const value = JSON.stringify(req.body.value);
     await run(
       `INSERT INTO kv_store(key, value, updated_at)

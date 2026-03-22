@@ -3,3 +3,14 @@ CREATE TABLE IF NOT EXISTS kv_store (
   value TEXT NOT NULL,
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS accounts (
+  id INTEGER PRIMARY KEY,
+  username TEXT NOT NULL UNIQUE,
+  password TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'user',
+  display_name TEXT,
+  email TEXT UNIQUE,
+  phone TEXT UNIQUE,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
