@@ -309,7 +309,7 @@ input, select, textarea {
 input:focus, select:focus, textarea:focus {
   outline: none;
   border-color: var(--blue-main);
-  box-shadow: 0 0 0 2px rgba(25,118,210,0.15);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--blue-main) 15%, transparent);
 }
 textarea { resize: vertical; min-height: 60px; }
 
@@ -393,13 +393,13 @@ footer:hover {
 .badge-ok  { background: #e8f5e9; color: #2e7d32; }
 .badge-low { background: #fff3e0; color: #e65100; }
 .badge-out { background: #ffebee; color: #b71c1c; }
-.badge-in  { background: #e3f2fd; color: #1565c0; }
+.badge-in  { background: var(--blue-pale); color: var(--blue-dark); }
 
 /* ── Alert / Message ────────────────────────────────── */
 .alert { padding: 10px 14px; border-radius: 6px; font-size: 13px; margin-bottom: 12px; }
 .alert-error   { background: #ffebee; color: #c62828; border-left: 4px solid var(--danger); }
 .alert-success { background: #e8f5e9; color: #2e7d32; border-left: 4px solid var(--success); }
-.alert-info    { background: #e3f2fd; color: #1565c0; border-left: 4px solid var(--blue-main); }
+.alert-info    { background: var(--blue-pale); color: var(--blue-dark); border-left: 4px solid var(--blue-main); }
 
 /* ── Filters toolbar ────────────────────────────────── */
 .filters-bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 16px; }
@@ -686,8 +686,8 @@ body.theme-dark #login-overlay::before {
   text-align: center;
 }
 .login-accounts-hint code {
-  background: #dce8f5;
-  color: #1565c0;
+  background: var(--blue-pale);
+  color: var(--blue-dark);
   padding: 1px 5px;
   border-radius: 3px;
   font-size: 11px;
@@ -832,7 +832,7 @@ body.theme-dark #login-overlay::before {
   font-weight: 800;
   letter-spacing: .8px;
 }
-.admin-badge { background: #1565c0; color: #fff; }
+.admin-badge { background: var(--blue-dark); color: #fff; }
 .user-badge  { background: #546e7a; color: #fff; }
 .btn-logout {
   background: #fff;
@@ -972,3 +972,36 @@ footer strong {
   footer { display: none !important; }
   #login-overlay { display: none !important; }
 }
+
+/* ══════════════════════════════════════════════════════
+   20 THEME VARIANTS
+   Maps the base blue accent variables to new color palettes
+   so the entire app adopts the theme seamlessly.
+   ══════════════════════════════════════════════════════ */
+
+[data-theme]:not([data-theme="light"]):not([data-theme="dark"]) {
+  --accent: var(--blue-main);
+  --accent-strong: var(--blue-dark);
+  --accent-soft: var(--blue-pale);
+  --sidebar-bg: var(--blue-dark);
+  --login-overlay-bg: linear-gradient(135deg, var(--blue-dark) 0%, var(--blue-main) 60%, var(--blue-dark) 100%);
+}
+
+[data-theme="ocean"]    { --blue-main: #0277bd; --blue-dark: #01579b; --blue-light: #29b6f6; --blue-pale: #e1f5fe; }
+[data-theme="forest"]   { --blue-main: #2e7d32; --blue-dark: #1b5e20; --blue-light: #66bb6a; --blue-pale: #e8f5e9; }
+[data-theme="crimson"]  { --blue-main: #c62828; --blue-dark: #b71c1c; --blue-light: #ef5350; --blue-pale: #ffebee; }
+[data-theme="amethyst"] { --blue-main: #6a1b9a; --blue-dark: #4a148c; --blue-light: #ab47bc; --blue-pale: #f3e5f5; }
+[data-theme="sunset"]   { --blue-main: #ef6c00; --blue-dark: #e65100; --blue-light: #ffa726; --blue-pale: #fff3e0; }
+[data-theme="teal"]     { --blue-main: #00838f; --blue-dark: #006064; --blue-light: #26c6da; --blue-pale: #e0f7fa; }
+[data-theme="rose"]     { --blue-main: #ad1457; --blue-dark: #880e4f; --blue-light: #ec407a; --blue-pale: #fce4ec; }
+[data-theme="aqua"]     { --blue-main: #00695c; --blue-dark: #004d40; --blue-light: #26a69a; --blue-pale: #e0f2f1; }
+[data-theme="indigo"]   { --blue-main: #283593; --blue-dark: #1a237e; --blue-light: #5c6bc0; --blue-pale: #e8eaf6; }
+[data-theme="lime"]     { --blue-main: #9e9d24; --blue-dark: #827717; --blue-light: #d4e157; --blue-pale: #f9fbe7; }
+[data-theme="amber"]    { --blue-main: #ff8f00; --blue-dark: #ff6f00; --blue-light: #ffca28; --blue-pale: #fff8e1; }
+[data-theme="brown"]    { --blue-main: #4e342e; --blue-dark: #3e2723; --blue-light: #8d6e63; --blue-pale: #efebe9; }
+[data-theme="slate"]    { --blue-main: #37474f; --blue-dark: #263238; --blue-light: #78909c; --blue-pale: #eceff1; }
+[data-theme="steel"]    { --blue-main: #455a64; --blue-dark: #37474f; --blue-light: #90a4ae; --blue-pale: #eceff1; }
+[data-theme="royal"]    { --blue-main: #4527a0; --blue-dark: #311b92; --blue-light: #7e57c2; --blue-pale: #ede7f6; }
+[data-theme="volcano"]  { --blue-main: #d84315; --blue-dark: #bf360c; --blue-light: #ff7043; --blue-pale: #fbe9e7; }
+[data-theme="sky"]      { --blue-main: #0288d1; --blue-dark: #01579b; --blue-light: #29b6f6; --blue-pale: #e1f5fe; }
+[data-theme="mint"]     { --blue-main: #00bfa5; --blue-dark: #00897b; --blue-light: #4db6ac; --blue-pale: #e0f2f1; }

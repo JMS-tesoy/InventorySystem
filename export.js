@@ -340,7 +340,7 @@ function showExportToast(message) {
     position: fixed;
     bottom: 60px;
     right: 24px;
-    background: #1565c0;
+    background: var(--blue-dark, #1565c0);
     color: #fff;
     padding: 12px 20px;
     border-radius: 8px;

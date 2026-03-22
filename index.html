@@ -19,14 +19,11 @@
         const legacy = localStorage.getItem('theme');
         const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
 
-        const theme = (saved === 'dark' || saved === 'light')
-          ? saved
-          : (legacy === 'dark' || legacy === 'light')
-          ? legacy
-          : (systemDark ? 'dark' : 'light');
+        const allowed = ['light','dark','ocean','forest','crimson','amethyst','sunset','teal','rose','aqua','indigo','lime','amber','brown','slate','steel','royal','volcano','sky','mint'];
+        const theme = allowed.includes(saved) ? saved : allowed.includes(legacy) ? legacy : (systemDark ? 'dark' : 'light');
 
         document.documentElement.setAttribute('data-theme', theme);
-        document.documentElement.style.colorScheme = theme;
+        document.documentElement.style.colorScheme = theme === 'dark' ? 'dark' : 'light';
       } catch (_) {
         document.documentElement.setAttribute('data-theme', 'light');
         document.documentElement.style.colorScheme = 'light';
@@ -38,6 +35,11 @@
        Link to external stylesheet (styles.css)
        ===================================================== -->
   <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* Dropdown Theme Alignment */
+    #theme-selector option, #chat-color option { background-color: #ffffff; color: #333333; }
+    html[data-theme='dark'] #theme-selector option, html[data-theme='dark'] #chat-color option { background-color: #1e293b; color: #eceff1; }
+  </style>
 </head>
 <body>
 
@@ -229,7 +231,21 @@
 
   <!-- Top bar — title updates dynamically via showPage() -->
   <div id="topbar">
-    <span id="topbar-title">📊 Inventory Dashboard</span>
+    <div style="display: flex; align-items: center; gap: 15px;">
+      <span id="topbar-title">📊 Inventory Dashboard</span>
+      <div id="chat-color-picker-container" style="display: none; align-items: center; gap: 5px;">
+        <label for="chat-color" style="font-size: 12px; color: var(--muted); cursor: pointer;" title="Change your chat bubble color">Bubble Color:</label>
+        <select id="chat-color" onchange="updateChatColor(this.value)" style="padding: 4px 8px; border: 1px solid var(--border-color, #ccc); border-radius: 4px; background: transparent; color: inherit; cursor: pointer; font-size: 12px;" title="Change your chat bubble color">
+          <option value="#2c5282">Blue</option>
+          <option value="#2e7d32">Green</option>
+          <option value="#c62828">Red</option>
+          <option value="#6a1b9a">Purple</option>
+          <option value="#ef6c00">Orange</option>
+          <option value="#00838f">Teal</option>
+          <option value="#37474f">Slate</option>
+        </select>
+      </div>
+    </div>
     <div id="topbar-user"></div>
   </div>
 
@@ -833,7 +849,7 @@
     if (typeof io !== 'undefined') {
       socket = io();
       socket.on('chat_message', function(msg) {
-        displayChatMessage(msg.user, msg.text, 'received');
+        displayChatMessage(msg.user, msg.text, 'received', msg.color);
       });
     }
   } catch (e) {
@@ -846,6 +862,20 @@
     }
   }
 
+  function initChatColor() {
+    const session = JSON.parse(localStorage.getItem('currentUser') || 'null');
+    const username = session && session.username ? session.username : 'Guest';
+    const savedColor = localStorage.getItem('chatColor_' + username) || '#2c5282';
+    const colorInput = document.getElementById('chat-color');
+    if (colorInput) colorInput.value = savedColor;
+  }
+
+  function updateChatColor(colorHex) {
+    const session = JSON.parse(localStorage.getItem('currentUser') || 'null');
+    const username = session && session.username ? session.username : 'Guest';
+    localStorage.setItem('chatColor_' + username, colorHex);
+  }
+
   function sendChatMessage() {
     const input = document.getElementById('chat-input');
     const text = input.value.trim();
@@ -853,19 +883,29 @@
     
     const session = JSON.parse(localStorage.getItem('currentUser') || 'null');
     const username = session && session.username ? session.username : 'Guest';
+    const myColor = localStorage.getItem('chatColor_' + username) || '#2c5282';
     const target = document.getElementById('chat-member-dropdown').value;
     
     const displayMsg = target && target !== 'ALL' ? `<span style="font-size: 0.8em; background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 4px; margin-right: 5px; display: inline-block; margin-bottom: 4px;">@${target}</span><br/>${text}` : text;
     
     // Display locally
-    displayChatMessage(username, displayMsg, 'sent');
+    displayChatMessage(username, displayMsg, 'sent', myColor);
     
     // Send to server
     if (socket) {
-      socket.emit('chat_message', { user: username, text: displayMsg, target: target });
+      socket.emit('chat_message', { user: username, text: displayMsg, target: target, color: myColor });
     }
     
     input.value = '';
+  }
+
+  function hexToRgba(hex, alpha) {
+    hex = hex.replace(/^#/, '');
+    if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+    const r = parseInt(hex.substring(0, 2), 16) || 44;
+    const g = parseInt(hex.substring(2, 4), 16) || 82;
+    const b = parseInt(hex.substring(4, 6), 16) || 130;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   }
 
   // Generate a consistent, distinct hue based on a username
@@ -877,7 +917,7 @@
     return Math.abs(hash) % 360;
   }
 
-  function displayChatMessage(user, text, type) {
+  function displayChatMessage(user, text, type, colorHex) {
     const chatMessages = document.getElementById('chat-messages');
     const msgDiv = document.createElement('div');
     
@@ -893,17 +933,23 @@
     msgDiv.style.textShadow = '0 1px 2px rgba(0, 0, 0, 0.2)';
     
     if (type === 'sent') {
+      const c = colorHex || '#2c5282';
       msgDiv.style.alignSelf = 'flex-end';
-      msgDiv.style.backgroundColor = 'rgba(44, 82, 130, 0.65)';
-      msgDiv.style.border = '1px solid rgba(44, 82, 130, 0.4)';
+      msgDiv.style.backgroundColor = hexToRgba(c, 0.65);
+      msgDiv.style.border = `1px solid ${hexToRgba(c, 0.4)}`;
       msgDiv.style.borderBottomRightRadius = '4px';
       msgDiv.style.color = 'white';
       msgDiv.innerHTML = `<strong>You:</strong> ${text}`;
     } else {
-      const hue = getUserColor(user);
       msgDiv.style.alignSelf = 'flex-start';
-      msgDiv.style.backgroundColor = `hsla(${hue}, 40%, 45%, 0.65)`;
-      msgDiv.style.border = `1px solid hsla(${hue}, 40%, 45%, 0.4)`;
+      if (colorHex) {
+        msgDiv.style.backgroundColor = hexToRgba(colorHex, 0.65);
+        msgDiv.style.border = `1px solid ${hexToRgba(colorHex, 0.4)}`;
+      } else {
+        const hue = getUserColor(user);
+        msgDiv.style.backgroundColor = `hsla(${hue}, 40%, 45%, 0.65)`;
+        msgDiv.style.border = `1px solid hsla(${hue}, 40%, 45%, 0.4)`;
+      }
       msgDiv.style.borderBottomLeftRadius = '4px';
       msgDiv.style.color = 'white';
       msgDiv.innerHTML = `<strong>@${user}</strong> ${text}`;

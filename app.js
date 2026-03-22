@@ -175,6 +175,14 @@ function showPage(name) {
 
   saveLastVisitedPage(currentPage);
 
+  const chatColorContainer = document.getElementById('chat-color-picker-container');
+  if (chatColorContainer) {
+    chatColorContainer.style.display = currentPage === 'chat' ? 'flex' : 'none';
+    if (currentPage === 'chat' && typeof initChatColor === 'function') {
+      initChatColor();
+    }
+  }
+
   closeSidebar(); // auto-close on mobile
 }
 
@@ -216,10 +224,10 @@ function getThemeMapFromSettings() {
 function loadThemePreferenceForUser() {
   const username = getCurrentUsernameOrGuest();
   const saved = getThemeMapFromSettings()[username];
-  if (saved === 'light' || saved === 'dark') return saved;
+  if (saved) return saved;
 
   const legacy = localStorage.getItem('theme');
-  if (legacy === 'light' || legacy === 'dark') return legacy;
+  if (legacy) return legacy;
 
   const system = getSystemTheme();
   return system === 'dark' ? 'dark' : 'light';
@@ -232,65 +240,35 @@ function getAppliedTheme() {
   return 'light';
 }
 
-function updateThemeToggleUI(mode) {
-  const btn = document.getElementById('theme-toggle-btn');
-  if (!btn) return;
-
-  if (!btn.querySelector('.theme-icon-stack')) {
-    btn.innerHTML = `
-      <span class="theme-icon-stack" aria-hidden="true">
-        <span class="theme-icon theme-icon-moon">
-          <svg viewBox="0 0 24 24" focusable="false"><path d="M21 12.79A9 9 0 1 1 11.21 3c.17 0 .34.01.5.02A7 7 0 0 0 21 12.79z"></path></svg>
-        </span>
-        <span class="theme-icon theme-icon-sun">
-          <svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="M4.93 4.93l1.41 1.41"></path><path d="M17.66 17.66l1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="M4.93 19.07l1.41-1.41"></path><path d="M17.66 6.34l1.41-1.41"></path></svg>
-        </span>
-      </span>
-      <span class="theme-label"></span>
-    `;
-  }
-
-  const next = mode === 'dark' ? 'light' : 'dark';
-  const label = mode === 'dark' ? 'Light Mode' : 'Dark Mode';
-
-  btn.classList.toggle('is-dark', mode === 'dark');
-  const labelEl = btn.querySelector('.theme-label');
-  if (labelEl) labelEl.textContent = label;
-
-  btn.setAttribute('aria-pressed', String(mode === 'dark'));
-  btn.setAttribute('aria-label', `Switch to ${next} mode`);
-  btn.setAttribute('title', `Switch to ${next} mode`);
-}
-
 function applyTheme(mode) {
-  const normalized = mode === 'dark' ? 'dark' : 'light';
+  const validTheme = mode || 'light';
 
-  document.documentElement.setAttribute('data-theme', normalized);
-  document.documentElement.style.colorScheme = normalized;
+  document.documentElement.setAttribute('data-theme', validTheme);
+  document.documentElement.style.colorScheme = validTheme === 'dark' ? 'dark' : 'light';
 
-  document.body.classList.toggle('theme-dark', normalized === 'dark');
-  document.body.classList.toggle('theme-light', normalized === 'light');
-  document.body.setAttribute('data-theme', normalized);
+  document.body.classList.toggle('theme-dark', validTheme === 'dark');
+  document.body.classList.toggle('theme-light', validTheme === 'light');
+  document.body.setAttribute('data-theme', validTheme);
 
-  updateThemeToggleUI(normalized);
+  const sel = document.getElementById('theme-selector');
+  if (sel) sel.value = validTheme;
 }
 
 function saveThemePreferenceForUser(mode) {
-  const normalized = mode === 'dark' ? 'dark' : 'light';
+  const validTheme = mode || 'light';
   const username = getCurrentUsernameOrGuest();
   const settings = getSettings() || {};
   const themeMap = (settings.theme_by_user && typeof settings.theme_by_user === 'object' && !Array.isArray(settings.theme_by_user))
     ? settings.theme_by_user
     : {};
-  themeMap[username] = normalized;
+  themeMap[username] = validTheme;
   saveSettings({ theme_by_user: themeMap });
-  localStorage.setItem('theme', normalized);
+  localStorage.setItem('theme', validTheme);
 }
 
-function toggleTheme() {
-  const next = getAppliedTheme() === 'dark' ? 'light' : 'dark';
-  applyTheme(next);
-  saveThemePreferenceForUser(next);
+function changeTheme(mode) {
+  applyTheme(mode);
+  saveThemePreferenceForUser(mode);
 }
 
 function refreshThemeForCurrentUser() {
@@ -299,7 +277,7 @@ function refreshThemeForCurrentUser() {
 
 function hasSavedThemeForUser(username) {
   const saved = getThemeMapFromSettings()[username];
-  return saved === 'light' || saved === 'dark';
+  return !!saved;
 }
 
 function initThemeController() {

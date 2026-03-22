@@ -578,16 +578,45 @@ function updateTopbarUser(session) {
   const userName = session.displayName || session.username || 'Guest';
   const roleLabel = session.role === 'admin'
     ? '<span class="role-badge admin-badge">ADMIN</span>'
-    : '<span class="role-badge user-badge">USER</span>';
+    : '';
+    
+  const themeOpts = [
+    { id: 'light', name: 'Light' },
+    { id: 'dark', name: 'Dark' },
+    { id: 'ocean', name: 'Ocean Blue' },
+    { id: 'forest', name: 'Forest Green' },
+    { id: 'crimson', name: 'Crimson Red' },
+    { id: 'amethyst', name: 'Amethyst Purple' },
+    { id: 'sunset', name: 'Sunset Orange' },
+    { id: 'teal', name: 'Teal Sky' },
+    { id: 'rose', name: 'Rose Pink' },
+    { id: 'aqua', name: 'Aqua Cyan' },
+    { id: 'indigo', name: 'Midnight Indigo' },
+    { id: 'lime', name: 'Lemon Lime' },
+    { id: 'amber', name: 'Amber Glow' },
+    { id: 'brown', name: 'Chocolate Brown' },
+    { id: 'slate', name: 'Slate Grey' },
+    { id: 'steel', name: 'Steel Blue' },
+    { id: 'royal', name: 'Royal Purple' },
+    { id: 'volcano', name: 'Volcano' },
+    { id: 'sky', name: 'Sky Blue' },
+    { id: 'mint', name: 'Mint Green' }
+  ].map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+
   badge.innerHTML = `
     <span style="margin-right: 10px; font-weight: 600;">${userName}</span>
     ${roleLabel}
-    <button id="theme-toggle-btn" class="theme-toggle no-print" onclick="toggleTheme()" aria-label="Switch theme" title="Switch theme">Dark Mode</button>
-    <button class="btn btn-sm btn-logout" onclick="doLogout()">🚪 Logout</button>
+    <select id="theme-selector" class="no-print" onchange="changeTheme(this.value)" aria-label="Select App Theme" title="Select App Theme" style="margin-left: 10px; margin-right: 10px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color, #ccc); background: transparent; color: inherit; cursor: pointer; font-size: 13px;">
+      ${themeOpts}
+    </select>
+    <button class="btn btn-sm btn-logout" onclick="doLogout()" style="display: inline-flex; align-items: center; justify-content: center; gap: 5px;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c62828" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
+      Logout
+    </button>
   `;
 
   if (typeof applyTheme === 'function') {
-    const mode = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+    const mode = document.documentElement.getAttribute('data-theme') || 'light';
     applyTheme(mode);
   }
 }
