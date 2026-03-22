@@ -868,36 +868,45 @@
     input.value = '';
   }
 
-  // Generate a consistent, distinct color based on a username
+  // Generate a consistent, distinct hue based on a username
   function getUserColor(username) {
     let hash = 0;
     for (let i = 0; i < username.length; i++) {
       hash = username.charCodeAt(i) + ((hash << 5) - hash);
     }
-    const hue = Math.abs(hash) % 360;
-    return `hsl(${hue}, 70%, 35%)`; // 35% lightness ensures contrast against the gray bubble
+    return Math.abs(hash) % 360;
   }
 
   function displayChatMessage(user, text, type) {
     const chatMessages = document.getElementById('chat-messages');
     const msgDiv = document.createElement('div');
     
-    msgDiv.style.maxWidth = '100%';
-    msgDiv.style.padding = '8px 12px';
-    msgDiv.style.borderRadius = '8px';
+    msgDiv.style.maxWidth = '85%';
+    msgDiv.style.padding = '10px 14px';
+    msgDiv.style.borderRadius = '16px';
     msgDiv.style.wordWrap = 'break-word';
+    
+    // Glassmorphism effect
+    msgDiv.style.backdropFilter = 'blur(8px)';
+    msgDiv.style.WebkitBackdropFilter = 'blur(8px)';
+    msgDiv.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.05)';
+    msgDiv.style.textShadow = '0 1px 2px rgba(0, 0, 0, 0.2)';
     
     if (type === 'sent') {
       msgDiv.style.alignSelf = 'flex-end';
-      msgDiv.style.backgroundColor = '#1d6f42';
+      msgDiv.style.backgroundColor = 'rgba(44, 82, 130, 0.65)';
+      msgDiv.style.border = '1px solid rgba(44, 82, 130, 0.4)';
+      msgDiv.style.borderBottomRightRadius = '4px';
       msgDiv.style.color = 'white';
-      msgDiv.innerHTML = `<strong>You:</strong> <br/>${text}`;
+      msgDiv.innerHTML = `<strong>You:</strong> ${text}`;
     } else {
-      const userColor = getUserColor(user);
+      const hue = getUserColor(user);
       msgDiv.style.alignSelf = 'flex-start';
-      msgDiv.style.backgroundColor = userColor;
+      msgDiv.style.backgroundColor = `hsla(${hue}, 40%, 45%, 0.65)`;
+      msgDiv.style.border = `1px solid hsla(${hue}, 40%, 45%, 0.4)`;
+      msgDiv.style.borderBottomLeftRadius = '4px';
       msgDiv.style.color = 'white';
-      msgDiv.innerHTML = `<strong>${user}</strong> <br/>${text}`;
+      msgDiv.innerHTML = `<strong>@${user}</strong> ${text}`;
     }
     
     chatMessages.appendChild(msgDiv);
