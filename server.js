@@ -12,6 +12,11 @@ const PORT = process.env.PORT || 3000;
 const DB_PATH = path.join(__dirname, 'data.sqlite3');
 const SCHEMA_PATH = path.join(__dirname, 'schema.sql');
 
+const UPLOADS_DIR = path.join(__dirname, 'uploads');
+if (!fs.existsSync(UPLOADS_DIR)) {
+  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+}
+
 const STORAGE_KEYS = new Set([
   'departments',
   'employees',
@@ -151,6 +156,7 @@ async function initDb() {
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(__dirname));
+app.use('/uploads', express.static(UPLOADS_DIR));
 
 app.get('/api/health', async (_req, res) => {
   try {
@@ -332,6 +338,27 @@ io.on('connection', (socket) => {
 
   socket.on('chat_message', async (msg) => {
     try {
+      // Check if there is an image attachment as a Base64 string
+      if (msg.attachment && msg.attachment.startsWith('data:image/')) {
+        const matches = msg.attachment.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+        if (matches && matches.length === 3) {
+          const mimeType = matches[1];
+          const base64Data = matches[2];
+          const buffer = Buffer.from(base64Data, 'base64');
+          
+          // Get file extension and create a unique filename
+          const ext = mimeType.split('/')[1] || 'png';
+          const filename = `img_${Date.now()}_${Math.floor(Math.random() * 10000)}.${ext}`;
+          const filepath = path.join(UPLOADS_DIR, filename);
+          
+          // Save the file to the uploads directory
+          await fs.promises.writeFile(filepath, buffer);
+          
+          // Update the message attachment to the new URL path
+          msg.attachment = `/uploads/${filename}`;
+        }
+      }
+
       await run(
         `INSERT INTO chat_history (id, user, text, color, target, reply_to, attachment) VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [msg.id, msg.user, msg.text, msg.color, msg.target, msg.replyTo ? JSON.stringify(msg.replyTo) : null, msg.attachment || null]
