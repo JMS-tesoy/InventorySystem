@@ -22,8 +22,7 @@ const REMOTE_STORAGE_KEYS = [
   'items',
   'transactions',
   'settings',
-  'accounts',
-  'currentUser'
+  'accounts'
 ];
 
 let backendAvailable = false;

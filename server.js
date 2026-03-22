@@ -18,8 +18,7 @@ const STORAGE_KEYS = new Set([
   'items',
   'transactions',
   'settings',
-  'accounts',
-  'currentUser'
+  'accounts'
 ]);
 
 const db = new sqlite3.Database(DB_PATH);
@@ -145,6 +144,7 @@ async function initDb() {
   const schema = fs.readFileSync(SCHEMA_PATH, 'utf8');
   await exec(schema);
   await migrateAccountsFromKvStore();
+  await run("DELETE FROM kv_store WHERE key = 'currentUser'");
 }
 
 app.use(express.json({ limit: '5mb' }));
