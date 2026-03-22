@@ -784,6 +784,25 @@
         background-color: #1e293b;
         color: #eceff1;
       }
+      /* New advanced chat features */
+      .chat-msg-container { position: relative; display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+      .chat-msg-wrapper { position: relative; display: inline-block; max-width: 100%; }
+      .chat-actions {
+        display: none; position: absolute; top: -14px; right: 10px; background: var(--surface);
+        border: 1px solid var(--border-color, #ccc); border-radius: 12px; padding: 2px 6px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1); gap: 4px; z-index: 5; align-items: center;
+      }
+      .chat-msg-wrapper:hover .chat-actions { display: flex; }
+      .chat-action-btn { background: none; border: none; cursor: pointer; font-size: 14px; padding: 2px 4px; border-radius: 4px; }
+      .chat-action-btn:hover { background: var(--blue-pale); }
+      .chat-reactions-list { display: flex; flex-wrap: wrap; gap: 4px; margin-top: -2px; padding-left: 10px; padding-right: 10px; }
+      .chat-reaction-badge { font-size: 11px; background: color-mix(in srgb, var(--surface) 80%, var(--border-color) 20%); border: 1px solid var(--border-color, #ccc); padding: 2px 6px; border-radius: 12px; cursor: pointer; color: var(--text); display: inline-flex; align-items: center; gap: 4px; user-select: none; }
+      .chat-suggestion-item { padding: 8px 12px; cursor: pointer; font-size: 13px; border-bottom: 1px solid var(--border-color, #eee); display: flex; align-items: center; }
+      .chat-suggestion-item:last-child { border-bottom: none; }
+      .chat-suggestion-item:hover { background: var(--blue-pale); }
+      
+      @keyframes bump { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+      .chat-reaction-badge.bump { animation: bump 0.3s ease; }
     </style>
     <div class="page" id="page-chat">
       <div class="card" style="display: flex; flex-direction: column; height: 70vh;">
@@ -800,9 +819,16 @@
         <div id="chat-messages" style="flex-grow: 1; overflow-y: auto; border: 1px solid var(--border-color, #dce6f0); padding: 10px; margin-bottom: 10px; border-radius: 4px; display: flex; flex-direction: column; gap: 8px;">
           <div style="text-align: center; color: #546e7a; font-size: 0.9em; margin-bottom: 10px;">Welcome to the team chat!</div>
         </div>
-        <div style="display: flex; gap: 10px;">
-          <input type="text" id="chat-input" placeholder="Type your message here..." style="flex-grow: 1; padding: 10px; border: 1px solid var(--border-color, #dce6f0); border-radius: 4px; background: transparent; color: inherit;" onkeypress="handleChatKeyPress(event)">
-          <button class="btn btn-primary" onclick="sendChatMessage()">Send</button>
+        <div style="display: flex; flex-direction: column; position: relative;">
+          <div id="chat-suggestions" style="display: none; position: absolute; bottom: 100%; left: 0; width: 300px; max-height: 180px; overflow-y: auto; background: var(--surface); border: 1px solid var(--border-color, #ccc); border-radius: 6px; box-shadow: 0 -4px 10px rgba(0,0,0,0.1); z-index: 10; margin-bottom: 5px;"></div>
+          <div id="chat-reply-preview" style="display: none; padding: 6px 10px; background: var(--blue-pale); border-left: 3px solid var(--blue-main); font-size: 12px; border-radius: 4px; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+            <span id="chat-reply-text" style="color: var(--blue-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%;"></span>
+            <button onclick="cancelReply()" style="background: none; border: none; cursor: pointer; color: var(--danger); font-size: 14px;" title="Cancel Reply">✕</button>
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <input type="text" id="chat-input" placeholder="Type a message, '/' for commands, '@' to mention..." style="flex-grow: 1; padding: 10px; border: 1px solid var(--border-color, #dce6f0); border-radius: 4px; background: transparent; color: inherit;" onkeypress="handleChatKeyPress(event)" oninput="handleChatInput(event)" autocomplete="off">
+            <button class="btn btn-primary" onclick="sendChatMessage()">Send</button>
+          </div>
         </div>
       </div>
     </div><!-- END PAGE 5: Chat -->
@@ -849,7 +875,15 @@
     if (typeof io !== 'undefined') {
       socket = io();
       socket.on('chat_message', function(msg) {
-        displayChatMessage(msg.user, msg.text, 'received', msg.color);
+        // Backwards compatibility for old plain-text payloads
+        if (typeof msg === 'string' || !msg.id) {
+           msg = { id: 'old_' + Date.now(), user: msg.user, text: msg.text, color: msg.color };
+        }
+        displayChatMessage(msg, 'received');
+      });
+      
+      socket.on('chat_reaction', function(payload) {
+        applyReaction(payload);
       });
     }
   } catch (e) {
@@ -876,6 +910,128 @@
     localStorage.setItem('chatColor_' + username, colorHex);
   }
 
+  // --- Chat Advanced Features Logic ---
+  
+  let currentReplyTo = null;
+  
+  function handleChatInput(e) {
+    const input = e.target;
+    const val = input.value;
+    const cursor = input.selectionStart;
+    const textBeforeCursor = val.slice(0, cursor);
+    
+    // Match an @mentions or /command pattern just before the cursor
+    const matchAt = textBeforeCursor.match(/@([a-zA-Z0-9_]*)$/);
+    const matchSlash = textBeforeCursor.match(/\/([a-zA-Z0-9_]*)$/);
+    
+    const suggestionsBox = document.getElementById('chat-suggestions');
+    suggestionsBox.innerHTML = '';
+    
+    if (matchAt) {
+      const query = matchAt[1].toLowerCase();
+      const accounts = JSON.parse(localStorage.getItem('accounts') || '[]');
+      const matches = accounts.filter(a => a.username.toLowerCase().includes(query) || (a.displayName && a.displayName.toLowerCase().includes(query)));
+      
+      if (matches.length) {
+        matches.forEach(m => {
+          const div = document.createElement('div');
+          div.className = 'chat-suggestion-item';
+          div.textContent = `@${m.username} — ${m.displayName || ''}`;
+          div.onclick = () => insertSuggestion(`@${m.username} `, matchAt[0].length);
+          suggestionsBox.appendChild(div);
+        });
+        suggestionsBox.style.display = 'block';
+      } else {
+        suggestionsBox.style.display = 'none';
+      }
+    } else if (matchSlash) {
+      const query = matchSlash[1].toLowerCase();
+      const cmds = [
+        {cmd: 'export', desc: 'Export all Inventory Data'},
+        {cmd: 'clear', desc: 'Clear chat messages locally'},
+        {cmd: 'help', desc: 'Show available commands'}
+      ];
+      const matches = cmds.filter(c => c.cmd.includes(query));
+      if (matches.length) {
+        matches.forEach(m => {
+          const div = document.createElement('div');
+          div.className = 'chat-suggestion-item';
+          div.innerHTML = `<strong>/${m.cmd}</strong> <span style="font-size:11px;color:var(--muted);margin-left:5px;">${m.desc}</span>`;
+          div.onclick = () => insertSuggestion(`/${m.cmd} `, matchSlash[0].length);
+          suggestionsBox.appendChild(div);
+        });
+        suggestionsBox.style.display = 'block';
+      } else {
+        suggestionsBox.style.display = 'none';
+      }
+    } else {
+      suggestionsBox.style.display = 'none';
+    }
+  }
+  
+  function insertSuggestion(replacement, replaceLen) {
+    const input = document.getElementById('chat-input');
+    const val = input.value;
+    const cursor = input.selectionStart;
+    const start = cursor - replaceLen;
+    input.value = val.slice(0, start) + replacement + val.slice(cursor);
+    input.focus();
+    document.getElementById('chat-suggestions').style.display = 'none';
+  }
+  
+  function setReplyTo(id, user, text) {
+    currentReplyTo = { id, user, text };
+    document.getElementById('chat-reply-preview').style.display = 'flex';
+    document.getElementById('chat-reply-text').textContent = `Replying to @${user}: ${text.length > 40 ? text.substring(0,40)+'...' : text}`;
+    document.getElementById('chat-input').focus();
+  }
+
+  function cancelReply() {
+    currentReplyTo = null;
+    document.getElementById('chat-reply-preview').style.display = 'none';
+    document.getElementById('chat-reply-text').textContent = '';
+  }
+
+  function toggleReactions(msgId) {
+    const box = document.getElementById(`reaction-box-${msgId}`);
+    if(box) box.style.display = box.style.display === 'none' ? 'flex' : 'none';
+  }
+
+  function sendReaction(msgId, emoji) {
+    const session = JSON.parse(localStorage.getItem('currentUser') || 'null');
+    const username = session && session.username ? session.username : 'Guest';
+    const box = document.getElementById(`reaction-box-${msgId}`);
+    if (box) box.style.display = 'none';
+    
+    const payload = { msgId, emoji, user: username };
+    applyReaction(payload); // show locally immediately
+    if (socket) socket.emit('chat_reaction', payload);
+  }
+
+  function applyReaction(payload) {
+    const list = document.getElementById(`reactions-${payload.msgId}`);
+    if (!list) return; // message might be scrolled out or cleared
+    
+    let existing = list.querySelector(`[data-emoji="${payload.emoji}"]`);
+    if (existing) {
+      let countSpan = existing.querySelector('.count');
+      let count = parseInt(countSpan.textContent) || 1;
+      if (!existing.title.includes(payload.user)) { // crude check to prevent double counting
+         countSpan.textContent = count + 1;
+         existing.title += `, ${payload.user}`;
+         existing.classList.add('bump');
+         setTimeout(() => existing.classList.remove('bump'), 300);
+      }
+    } else {
+      const badge = document.createElement('span');
+      badge.className = 'chat-reaction-badge';
+      badge.setAttribute('data-emoji', payload.emoji);
+      badge.innerHTML = `${payload.emoji} <span class="count">1</span>`;
+      badge.title = payload.user;
+      list.appendChild(badge);
+    }
+  }
+
   function sendChatMessage() {
     const input = document.getElementById('chat-input');
     const text = input.value.trim();
@@ -888,15 +1044,37 @@
     
     const displayMsg = target && target !== 'ALL' ? `<span style="font-size: 0.8em; background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 4px; margin-right: 5px; display: inline-block; margin-bottom: 4px;">@${target}</span><br/>${text}` : text;
     
+    const msgPayload = {
+      id: 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+      user: username,
+      text: displayMsg,
+      color: myColor,
+      target: target,
+      replyTo: currentReplyTo
+    };
+
+    // Client-side local command intercepts
+    if (text === '/clear') {
+       document.getElementById('chat-messages').innerHTML = '<div style="text-align: center; color: #546e7a; font-size: 0.9em; margin-bottom: 10px;">Chat locally cleared.</div>';
+       input.value = ''; cancelReply(); return;
+    } else if (text === '/export') {
+       if(typeof exportAllData === 'function') exportAllData();
+       input.value = ''; cancelReply(); return;
+    } else if (text === '/help') {
+       displayChatMessage({ id: Date.now(), user: 'System', text: 'Commands: /export, /clear, /help. Type @ to tag users.', type: 'system' }, 'received');
+       input.value = ''; cancelReply(); return;
+    }
+
     // Display locally
-    displayChatMessage(username, displayMsg, 'sent', myColor);
+    displayChatMessage(msgPayload, 'sent');
     
     // Send to server
     if (socket) {
-      socket.emit('chat_message', { user: username, text: displayMsg, target: target, color: myColor });
+      socket.emit('chat_message', msgPayload);
     }
     
     input.value = '';
+    cancelReply();
   }
 
   function hexToRgba(hex, alpha) {
@@ -917,11 +1095,19 @@
     return Math.abs(hash) % 360;
   }
 
-  function displayChatMessage(user, text, type, colorHex) {
+  function displayChatMessage(msg, type) {
     const chatMessages = document.getElementById('chat-messages');
-    const msgDiv = document.createElement('div');
     
-    msgDiv.style.maxWidth = '85%';
+    const container = document.createElement('div');
+    container.className = 'chat-msg-container';
+    container.style.alignSelf = type === 'sent' ? 'flex-end' : 'flex-start';
+    container.style.maxWidth = '85%';
+    
+    const wrapper = document.createElement('div');
+    wrapper.className = 'chat-msg-wrapper';
+    
+    const msgDiv = document.createElement('div');
+    msgDiv.id = `msg-${msg.id}`;
     msgDiv.style.padding = '10px 14px';
     msgDiv.style.borderRadius = '16px';
     msgDiv.style.wordWrap = 'break-word';
@@ -932,30 +1118,58 @@
     msgDiv.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.05)';
     msgDiv.style.textShadow = '0 1px 2px rgba(0, 0, 0, 0.2)';
     
+    // Assemble Reply Context Preview block if present
+    let replyHtml = '';
+    if (msg.replyTo) {
+        replyHtml = `<div style="background: rgba(0,0,0,0.15); border-left: 3px solid rgba(255,255,255,0.5); padding: 4px 8px; border-radius: 4px; font-size: 0.85em; margin-bottom: 6px;">
+           <strong>Replying to @${msg.replyTo.user}</strong><br>
+           <span style="opacity:0.9;">${msg.replyTo.text.length > 50 ? msg.replyTo.text.substring(0, 50) + '...' : msg.replyTo.text}</span>
+        </div>`;
+    }
+    
     if (type === 'sent') {
-      const c = colorHex || '#2c5282';
-      msgDiv.style.alignSelf = 'flex-end';
+      const c = msg.color || '#2c5282';
       msgDiv.style.backgroundColor = hexToRgba(c, 0.65);
       msgDiv.style.border = `1px solid ${hexToRgba(c, 0.4)}`;
       msgDiv.style.borderBottomRightRadius = '4px';
       msgDiv.style.color = 'white';
-      msgDiv.innerHTML = `<strong>You:</strong> ${text}`;
+      msgDiv.innerHTML = `${replyHtml}<strong>You:</strong> ${msg.text}`;
     } else {
-      msgDiv.style.alignSelf = 'flex-start';
-      if (colorHex) {
-        msgDiv.style.backgroundColor = hexToRgba(colorHex, 0.65);
-        msgDiv.style.border = `1px solid ${hexToRgba(colorHex, 0.4)}`;
+      if (msg.color) {
+        msgDiv.style.backgroundColor = hexToRgba(msg.color, 0.65);
+        msgDiv.style.border = `1px solid ${hexToRgba(msg.color, 0.4)}`;
       } else {
-        const hue = getUserColor(user);
+        const hue = getUserColor(msg.user);
         msgDiv.style.backgroundColor = `hsla(${hue}, 40%, 45%, 0.65)`;
         msgDiv.style.border = `1px solid hsla(${hue}, 40%, 45%, 0.4)`;
       }
       msgDiv.style.borderBottomLeftRadius = '4px';
       msgDiv.style.color = 'white';
-      msgDiv.innerHTML = `<strong>@${user}</strong> ${text}`;
+      msgDiv.innerHTML = `${replyHtml}<strong>@${msg.user}</strong> ${msg.text}`;
     }
     
-    chatMessages.appendChild(msgDiv);
+    const actionsDiv = document.createElement('div');
+    actionsDiv.className = 'chat-actions';
+    const cleanText = msg.text.replace(/<[^>]*>?/gm, '').replace(/[\n\r]/g, ' ').replace(/'/g, "\\'"); // Sanitize for JS string injection
+    actionsDiv.innerHTML = `
+      <button class="chat-action-btn" onclick="toggleReactions('${msg.id}')" title="React">😀</button>
+      <button class="chat-action-btn" onclick="setReplyTo('${msg.id}', '${msg.user}', '${cleanText}')" title="Reply">↩️</button>
+      <div id="reaction-box-${msg.id}" style="display: none; position: absolute; top: 100%; left: 0; background: var(--surface); border: 1px solid var(--border-color, #ccc); border-radius: 8px; padding: 4px; gap: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); z-index: 10;">
+         ${['👍', '❤️', '😂', '😮', '😢', '🔥'].map(e => `<button class="chat-action-btn" onclick="sendReaction('${msg.id}', '${e}')">${e}</button>`).join('')}
+      </div>
+    `;
+
+    wrapper.appendChild(msgDiv);
+    wrapper.appendChild(actionsDiv);
+    
+    const reactionsList = document.createElement('div');
+    reactionsList.className = 'chat-reactions-list';
+    reactionsList.id = `reactions-${msg.id}`;
+
+    container.appendChild(wrapper);
+    container.appendChild(reactionsList);
+    
+    chatMessages.appendChild(container);
     chatMessages.scrollTop = chatMessages.scrollHeight;
   }
 </script>

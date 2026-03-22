@@ -297,6 +297,9 @@ io.on('connection', (socket) => {
   socket.on('chat_message', (msg) => {
     socket.broadcast.emit('chat_message', msg);
   });
+  socket.on('chat_reaction', (msg) => {
+    socket.broadcast.emit('chat_reaction', msg);
+  });
 });
 
 initDb()
