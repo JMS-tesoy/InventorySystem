@@ -1156,8 +1156,13 @@ function saveSignatories() {
 /* ─────────────────────────────────────────────────────
    BOOTSTRAP — Run on page load
    ───────────────────────────────────────────────────── */
-initAccounts();        // seed default login accounts (defined in auth.js)
-initSeedData();        // seed default inventory data (defined in db.js)
-initThemeController(); // apply saved/system theme and setup theme listener
-bindSettingsDeleteHandler(); // ensure all trash buttons work via delegated click handling
-checkAuth();           // show login screen if not logged in (defined in auth.js)
+async function bootstrapApp() {
+  if (typeof backendSyncPromise !== 'undefined') await backendSyncPromise;
+  initAccounts();        // seed default login accounts (defined in auth.js)
+  initSeedData();        // seed default inventory data (defined in db.js)
+  initThemeController(); // apply saved/system theme and setup theme listener
+  bindSettingsDeleteHandler(); // ensure all trash buttons work via delegated click handling
+  checkAuth();           // show login screen if not logged in (defined in auth.js)
+}
+
+bootstrapApp();

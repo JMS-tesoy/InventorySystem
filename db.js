@@ -216,8 +216,8 @@ function initSeedData() {
   });
 }
 
-// Fire-and-forget safe startup sync. App behavior remains local-first.
-initBackendSync();
+// Startup sync promise. We will await this in app.js before initializing the UI.
+const backendSyncPromise = initBackendSync();
 
 /*
 =====================================================

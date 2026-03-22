@@ -51,6 +51,25 @@ function initAccounts() {
           }
           return copy;
         });
+        
+        // Automatically inject extra seeded users if they don't exist yet
+        const extraUsers = [
+          { username: 'alice', displayName: 'Alice Cooper', phone: '09170000003' },
+          { username: 'bob', displayName: 'Bob Builder', phone: '09170000004' },
+          { username: 'charlie', displayName: 'Charlie Chaplin', phone: '09170000005' },
+          { username: 'diana', displayName: 'Diana Prince', phone: '09170000006' },
+          { username: 'evan', displayName: 'Evan Wright', phone: '09170000007' },
+          { username: 'fiona', displayName: 'Fiona Gallagher', phone: '09170000008' }
+        ];
+        
+        extraUsers.forEach((u) => {
+          if (!hydrated.some(a => (a.username || '').toLowerCase() === u.username)) {
+            const nextId = hydrated.reduce((max, account) => Math.max(max, Number(account.id) || 0), 0) + 1;
+            hydrated.push({ id: nextId, username: u.username, password: 'User@1234', role: 'user', displayName: u.displayName, email: u.username + '@inventory.local', phone: u.phone });
+            changed = true;
+          }
+        });
+
         if (changed) saveAuthKey('accounts', hydrated);
       }
     } catch (_) {
@@ -77,6 +96,60 @@ function initAccounts() {
       displayName: 'Staff User',
       email:       'user@inventory.local',
       phone:       '09170000002'
+    },
+    {
+      id: 3,
+      username:    'alice',
+      password:    'User@1234',
+      role:        'user',
+      displayName: 'Alice Cooper',
+      email:       'alice@inventory.local',
+      phone:       '09170000003'
+    },
+    {
+      id: 4,
+      username:    'bob',
+      password:    'User@1234',
+      role:        'user',
+      displayName: 'Bob Builder',
+      email:       'bob@inventory.local',
+      phone:       '09170000004'
+    },
+    {
+      id: 5,
+      username:    'charlie',
+      password:    'User@1234',
+      role:        'user',
+      displayName: 'Charlie Chaplin',
+      email:       'charlie@inventory.local',
+      phone:       '09170000005'
+    },
+    {
+      id: 6,
+      username:    'diana',
+      password:    'User@1234',
+      role:        'user',
+      displayName: 'Diana Prince',
+      email:       'diana@inventory.local',
+      phone:       '09170000006'
+    },
+    {
+      id: 7,
+      username:    'evan',
+      password:    'User@1234',
+      role:        'user',
+      displayName: 'Evan Wright',
+      email:       'evan@inventory.local',
+      phone:       '09170000007'
+    },
+    {
+      id: 8,
+      username:    'fiona',
+      password:    'User@1234',
+      role:        'user',
+      displayName: 'Fiona Gallagher',
+      email:       'fiona@inventory.local',
+      phone:       '09170000008'
     }
   ];
   saveAuthKey('accounts', accounts);
@@ -502,10 +575,12 @@ function applyRoleUI(role) {
 function updateTopbarUser(session) {
   const badge = document.getElementById('topbar-user');
   if (!badge) return;
+  const userName = session.displayName || session.username || 'Guest';
   const roleLabel = session.role === 'admin'
     ? '<span class="role-badge admin-badge">ADMIN</span>'
     : '<span class="role-badge user-badge">USER</span>';
   badge.innerHTML = `
+    <span style="margin-right: 10px; font-weight: 600;">${userName}</span>
     ${roleLabel}
     <button id="theme-toggle-btn" class="theme-toggle no-print" onclick="toggleTheme()" aria-label="Switch theme" title="Switch theme">Dark Mode</button>
     <button class="btn btn-sm btn-logout" onclick="doLogout()">🚪 Logout</button>

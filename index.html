@@ -868,11 +868,21 @@
     input.value = '';
   }
 
+  // Generate a consistent, distinct color based on a username
+  function getUserColor(username) {
+    let hash = 0;
+    for (let i = 0; i < username.length; i++) {
+      hash = username.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = Math.abs(hash) % 360;
+    return `hsl(${hue}, 70%, 35%)`; // 35% lightness ensures contrast against the gray bubble
+  }
+
   function displayChatMessage(user, text, type) {
     const chatMessages = document.getElementById('chat-messages');
     const msgDiv = document.createElement('div');
     
-    msgDiv.style.maxWidth = '70%';
+    msgDiv.style.maxWidth = '100%';
     msgDiv.style.padding = '8px 12px';
     msgDiv.style.borderRadius = '8px';
     msgDiv.style.wordWrap = 'break-word';
@@ -883,10 +893,11 @@
       msgDiv.style.color = 'white';
       msgDiv.innerHTML = `<strong>You:</strong> <br/>${text}`;
     } else {
+      const userColor = getUserColor(user);
       msgDiv.style.alignSelf = 'flex-start';
-      msgDiv.style.backgroundColor = '#e0e0e0';
-      msgDiv.style.color = '#333';
-      msgDiv.innerHTML = `<strong>${user}:</strong> <br/>${text}`;
+      msgDiv.style.backgroundColor = userColor;
+      msgDiv.style.color = 'white';
+      msgDiv.innerHTML = `<strong>${user}</strong> <br/>${text}`;
     }
     
     chatMessages.appendChild(msgDiv);
