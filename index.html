@@ -778,28 +778,43 @@
         </div>
       </div>
 
-      <!-- ── Chat Settings ── -->
-      <div class="card">
-        <h3>💬 Chat Settings</h3>
-        <p class="settings-muted-note" style="font-size:13px; color:#546e7a; margin-bottom:16px;">
-          Choose the compression level for images uploaded to the Team Chat.
-        </p>
-        <div class="form-row">
-          <div class="form-group" style="max-width: 300px;">
-            <label>Image Upload Quality</label>
-            <select id="chat-img-quality">
-              <option value="high">High Quality (Larger file size)</option>
-              <option value="medium">Medium Quality (Balanced)</option>
-              <option value="low">Low Quality (Smaller file size, faster)</option>
-            </select>
+      <!-- ── Chat Settings & Purge History ── -->
+      <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+        <!-- ── Chat Settings ── -->
+        <div class="card" style="flex: 1; min-width: 250px; display: flex; flex-direction: column; align-items: center; text-align: center;">
+          <h3>💬 Chat Settings</h3>
+          <p class="settings-muted-note" style="font-size:13px; color:#546e7a; margin-bottom:16px;">
+            Choose the compression level for images uploaded to the Team Chat.
+          </p>
+          <div class="form-row" style="width: 100%; justify-content: center;">
+            <div class="form-group" style="max-width: 300px; width: 100%;">
+              <label>Image Upload Quality</label>
+              <select id="chat-img-quality">
+                <option value="high">High Quality (Larger file size)</option>
+                <option value="medium">Medium Quality (Balanced)</option>
+                <option value="low">Low Quality (Smaller file size, faster)</option>
+              </select>
+            </div>
           </div>
         </div>
+
+        <!-- ── Purge Chat History ── -->
+        <div class="card" style="flex: 1; min-width: 250px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+          <h3>🧹 Purge Chat History</h3>
+          <p class="settings-muted-note" style="font-size:13px; color:#546e7a; margin-bottom:16px;">
+            Deletes all chat messages and image attachments permanently.
+          </p>
+          <button class="btn btn-outline" style="color: #c62828; border-color: #c62828;" onclick="clearGlobalChatHistory()">Clear Chat</button>
+        </div>
+      </div>
+
+      <div style="text-align: center; margin-top: 15px; margin-bottom: 25px;">
         <button class="btn btn-primary" onclick="saveConfiguration()">💾 Save Configurations</button>
       </div>
 
       <!-- ── Export All Data (Moved from Settings) ── -->
       <div class="card export-all-card" style="border-top: 4px solid #1d6f42;">
-        <h3>📊 Export All Data to Excel</h3>
+        <h3>📊 Export Data to Excel</h3>
         <p class="settings-muted-note" style="font-size:13px; color:#546e7a; margin-bottom:16px;">
           Download a complete Excel workbook with all your data in separate sheets.
         </p>
@@ -828,13 +843,6 @@
       <div class="card" style="border-top: 4px solid #c62828;">
         <h3 style="color: #c62828;">⚠️ Danger Zone</h3>
         <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 15px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 15px; border-bottom: 1px solid var(--border-color, #eee);">
-            <div>
-              <strong>Purge Chat History</strong>
-              <p style="font-size: 12px; color: var(--muted); margin: 0;">Deletes all chat messages and image attachments permanently.</p>
-            </div>
-            <button class="btn btn-outline" style="color: #c62828; border-color: #c62828;" onclick="clearGlobalChatHistory()">Clear Chat</button>
-          </div>
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <div>
               <strong>Factory Reset</strong>
